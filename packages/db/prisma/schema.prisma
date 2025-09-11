@@ -31,7 +31,19 @@ model Workflow {
   nodes       Json
   connections Json
 
-  user User @relation(fields: [userId], references: [id])
+  user    User      @relation(fields: [userId], references: [id])
+  webhook Webhook?
+}
+
+model Webhook {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  path       String @unique
+  method     HTTP_METHOD
+  nodeId     String
+  active Boolean @default(true)
+
+  workflowId String @db.ObjectId @unique
+  workflow Workflow @relation(fields: [workflowId], references: [id])
 }
 
 model Credentials {
@@ -44,9 +56,9 @@ model Credentials {
 }
 
 model AvailableCredentialsApplications {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  platform  PLATFORM
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  platform PLATFORM
 }
 
 enum PLATFORM {
@@ -54,3 +66,7 @@ enum PLATFORM {
   RESEND
 }
 
+enum HTTP_METHOD {
+  GET
+  POST
+}
