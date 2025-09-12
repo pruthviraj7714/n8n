@@ -24,41 +24,73 @@ model User {
 }
 
 model Workflow {
-  id          String  @id @default(auto()) @map("_id") @db.ObjectId
-  title       String
-  enabled     Boolean
-  userId      String  @db.ObjectId
-  nodes       Json
-  connections Json
+  id                String               @id @default(auto()) @map("_id") @db.ObjectId
+  title             String
+  enabled           Boolean
+  userId            String               @db.ObjectId
+  connections       Json
+  Node              Node[]
+  worflowExecutions WorkflowExecutions[]
 
-  user    User      @relation(fields: [userId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
   webhook Webhook?
 }
 
-model Webhook {
-  id         String @id @default(auto()) @map("_id") @db.ObjectId
-  path       String @unique
-  method     HTTP_METHOD
-  nodeId     String
-  active Boolean @default(true)
+model Node {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  type           NodeType
+  triggerType    TriggerType?
+  position       Json
+  actionPlatform PLATFORM?
+  action         Json?
+  data           Json?
+  webhook        Webhook?
+  workflowId     String       @db.ObjectId
+  workflow       Workflow     @relation(fields: [workflowId], references: [id])
+}
 
-  workflowId String @db.ObjectId @unique
-  workflow Workflow @relation(fields: [workflowId], references: [id])
+model Webhook {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  path      String      @unique
+  method    HTTP_METHOD
+  active    Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  nodeId     String   @unique @db.ObjectId
+  node       Node     @relation(fields: [nodeId], references: [id])
+  workflowId String   @unique @db.ObjectId
+  workflow   Workflow @relation(fields: [workflowId], references: [id])
+}
+
+model WorkflowExecutions {
+  id         String                  @id @default(auto()) @map("_id") @db.ObjectId
+  status     WorkflowExecutionStatus
+  startedAt  DateTime                @default(now())
+  finishedAt DateTime?
+
+  workflowId String   @db.ObjectId
+  workflow   Workflow @relation(fields: [workflowId], references: [id])
 }
 
 model Credentials {
-  id       String   @id @default(auto()) @map("_id") @db.ObjectId
-  title    String
-  platform PLATFORM
-  data     Json
-  userId   String   @db.ObjectId
-  user     User     @relation(fields: [userId], references: [id])
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  platform  PLATFORM
+  data      Json
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AvailableCredentialsApplications {
   id       String   @id @default(auto()) @map("_id") @db.ObjectId
   name     String
+  icon     String
   platform PLATFORM
+
+  @@unique([name, platform])
 }
 
 enum PLATFORM {
@@ -69,4 +101,22 @@ enum PLATFORM {
 enum HTTP_METHOD {
   GET
   POST
+}
+
+enum NodeType {
+  TRIGGER
+  ACTION
+}
+
+enum TriggerType {
+  MANUAL
+  WEBHOOK
+  CRON
+}
+
+enum WorkflowExecutionStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
 }
