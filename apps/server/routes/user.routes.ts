@@ -93,6 +93,11 @@ userRouter.post("/signin", async (req, res) => {
     res.status(200).json({
       message: "User Successfully Logged In",
       jwt,
+      id : user.id,
+      user : {
+        email : user.email,
+        username : user.username
+      }
     });
   } catch (error) {
     console.log(error);

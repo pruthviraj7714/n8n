@@ -14,6 +14,6 @@ app.use('/api/v1/workflow', workflowRouter);
 app.use('/api/v1/credential', credentialRouter);
 
 
-app.listen(3000, () => {
-    console.log('server is running on port 3000');
+app.listen(3001, () => {
+    console.log('server is running on port 3001');
 })

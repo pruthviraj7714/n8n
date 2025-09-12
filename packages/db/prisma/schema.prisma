@@ -21,6 +21,8 @@ model User {
   password    String
   workflows   Workflow[]
   credentials Credentials[]
+
+  createdAt     DateTime    @default(now())
 }
 
 model Workflow {
