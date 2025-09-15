@@ -21,8 +21,6 @@ model User {
   password    String
   workflows   Workflow[]
   credentials Credentials[]
-
-  createdAt     DateTime    @default(now())
 }
 
 model Workflow {
@@ -31,7 +29,7 @@ model Workflow {
   enabled           Boolean
   userId            String               @db.ObjectId
   connections       Json
-  Node              Node[]
+  nodes              Node[]
   worflowExecutions WorkflowExecutions[]
 
   user    User     @relation(fields: [userId], references: [id])
@@ -54,8 +52,6 @@ model Node {
 model Webhook {
   id        String      @id @default(auto()) @map("_id") @db.ObjectId
   path      String      @unique
-  method    HTTP_METHOD
-  active    Boolean     @default(true)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
@@ -98,11 +94,6 @@ model AvailableCredentialsApplications {
 enum PLATFORM {
   TELEGRAM
   RESEND
-}
-
-enum HTTP_METHOD {
-  GET
-  POST
 }
 
 enum NodeType {
