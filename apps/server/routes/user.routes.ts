@@ -3,19 +3,23 @@ import { hash, compare } from "bcrypt";
 import prisma from "@repo/db";
 import { sign } from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
+import { LoginSchema, RegisterSchema } from "@repo/common";
 
 const userRouter = Router();
 
 userRouter.post("/signup", async (req, res) => {
   try {
-    const { email, username, password } = req.body;
+    const { data, success, error } = RegisterSchema.safeParse(req.body);
 
-    if (!email || !username || !password) {
+    if (!success) {
       res.status(400).json({
-        message: "Invalid Creds",
+        message: "Validation Failed",
+        error: error.message,
       });
       return;
     }
+
+    const { email, password, username } = data;
 
     const isEmailOrUsernameAlreadyExists = await prisma.user.findFirst({
       where: {
@@ -50,7 +54,7 @@ userRouter.post("/signup", async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    
+
     res.status(500).json({
       message: "Internal Server Error",
     });
@@ -59,7 +63,17 @@ userRouter.post("/signup", async (req, res) => {
 
 userRouter.post("/signin", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { data, success, error } = LoginSchema.safeParse(req.body);
+
+    if (!success) {
+      res.status(400).json({
+        message: "Validation Failed",
+        error: error.message,
+      });
+      return;
+    }
+
+    const { password, username } = data;
 
     const user = await prisma.user.findFirst({
       where: {
@@ -93,15 +107,15 @@ userRouter.post("/signin", async (req, res) => {
     res.status(200).json({
       message: "User Successfully Logged In",
       jwt,
-      id : user.id,
-      user : {
-        email : user.email,
-        username : user.username
-      }
+      id: user.id,
+      user: {
+        email: user.email,
+        username: user.username,
+      },
     });
   } catch (error) {
     console.log(error);
-    
+
     res.status(500).json({
       message: "Internal Server Error",
     });
