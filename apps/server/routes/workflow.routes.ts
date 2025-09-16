@@ -3,17 +3,17 @@ import authMiddleware from "../middlewares/authMiddleware";
 import {
   CreateWorkflowSchema,
   UpdateWorkflowSchema,
-  WorkflowQuerySchema,
   ObjectIdSchema,
   NodeSchema,
 } from "@repo/common";
 import prisma from "@repo/db";
 import crypto from "crypto";
 import { WEBHOOK_BASE_PATH } from "../config";
+import workflowQueue from "../queue/workflowQueue";
 
 const workflowRouter = Router();
 
-const createRandomPathForWebhook = () => {
+const createRandomPathForWebhook = () : string => {
   const randomId = crypto.randomUUID();
   return `${WEBHOOK_BASE_PATH}/${randomId}`;
 };
@@ -408,5 +408,42 @@ workflowRouter.delete("/:workflowId", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 });
+
+workflowRouter.post(
+  "/execute-workflow/:workflowId",
+  authMiddleware,
+  async (req, res) => {
+    const workflowId = req.params.workflowId;
+    const userId = req.userId!;
+    try {
+      const isWorkFlowExists = await prisma.workflow.findUnique({
+        where: {
+          id: workflowId,
+        },
+      });
+
+      if (!isWorkFlowExists) {
+        res.status(400).json({
+          message: "Workflow Not found!",
+        });
+        return;
+      }
+
+      const job = await workflowQueue.add("execute-workflow", {
+        workflowId,
+        userId,
+      });
+
+      res.status(200).json({
+        message: "Workflow queued for execution",
+        jobId: job.id,
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: "Internal Server Error",
+      });
+    }
+  }
+);
 
 export default workflowRouter;
