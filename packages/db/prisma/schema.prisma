@@ -29,8 +29,10 @@ model Workflow {
   enabled           Boolean
   userId            String               @db.ObjectId
   connections       Json
-  nodes              Node[]
+  nodes             Node[]
   worflowExecutions WorkflowExecutions[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
   user    User     @relation(fields: [userId], references: [id])
   webhook Webhook?
@@ -50,10 +52,10 @@ model Node {
 }
 
 model Webhook {
-  id        String      @id @default(auto()) @map("_id") @db.ObjectId
-  path      String      @unique
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  path      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   nodeId     String   @unique @db.ObjectId
   node       Node     @relation(fields: [nodeId], references: [id])
