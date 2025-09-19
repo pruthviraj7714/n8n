@@ -13,7 +13,7 @@ import workflowQueue from "../queue/workflowQueue";
 
 const workflowRouter = Router();
 
-const createRandomPathForWebhook = () : string => {
+const createRandomPathForWebhook = (): string => {
   const randomId = crypto.randomUUID();
   return `${WEBHOOK_BASE_PATH}/${randomId}`;
 };
@@ -246,6 +246,52 @@ workflowRouter.get("/:workflowId", authMiddleware, async (req, res) => {
       data: workflow || {},
     });
   } catch (error) {
+    console.error("Error fetching workflow:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+});
+
+workflowRouter.patch("/toggle/:workflowId", authMiddleware, async (req, res) => {
+  try {
+    const { workflowId } = req.params;
+    const { enabled } = req.body;
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    const workflow = await prisma.workflow.update({
+      where: {
+        id: workflowId,
+        userId,
+      },
+      data: {
+        enabled,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Workflow toggled successfully",
+    });
+  } catch (error: any) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return res.status(404).json({
+        success: false,
+        message: "Workflow not found",
+      });
+    }
+
     console.error("Error fetching workflow:", error);
     res.status(500).json({
       success: false,
