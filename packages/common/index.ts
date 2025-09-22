@@ -64,19 +64,15 @@ export const UpdateWebhookSchema = WebhookSchema.partial().omit({
 });
 
 export const NodeSchema = z.object({
-  id: ObjectIdSchema,
   type: NodeTypeSchema,
   triggerType: TriggerTypeSchema.optional(),
   position: z.record(z.string(), z.number()),
   actionPlatform: PlatformSchema.optional(),
   action: z.record(z.string(), z.any()).optional(),
   data: z.record(z.string(), z.any()).optional(),
-  workflowId: ObjectIdSchema,
 });
 
-export const CreateNodeSchema = NodeSchema.omit({ id: true });
 
-export const UpdateNodeSchema = NodeSchema.partial().omit({ id: true });
 
 export const NodeWithWebhookSchema = NodeSchema.extend({
   webhook: WebhookSchema.optional(),
@@ -85,7 +81,7 @@ export const NodeWithWebhookSchema = NodeSchema.extend({
 export const WorkflowSchema = z.object({
   title: z.string().min(1, "Title is required"),
   enabled: z.boolean(),
-  connections: z.record(z.string(), z.any()),
+  connections: z.array(z.any()),
   nodes: z.array(NodeSchema),
   worflowExecutions: z.array(z.any()), 
 });
@@ -237,8 +233,6 @@ export type CreateWorkflow = z.infer<typeof CreateWorkflowSchema>;
 export type UpdateWorkflow = z.infer<typeof UpdateWorkflowSchema>;
 
 export type Node = z.infer<typeof NodeSchema>;
-export type CreateNode = z.infer<typeof CreateNodeSchema>;
-export type UpdateNode = z.infer<typeof UpdateNodeSchema>;
 
 export type Webhook = z.infer<typeof WebhookSchema>;
 export type CreateWebhook = z.infer<typeof CreateWebhookSchema>;
