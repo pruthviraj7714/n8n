@@ -10,6 +10,7 @@ import prisma from "@repo/db";
 import crypto from "crypto";
 import { WEBHOOK_BASE_PATH } from "../config";
 import workflowQueue from "../queue/workflowQueue";
+import { Prisma } from "@repo/db/generated/prisma/client";
 
 const workflowRouter = Router();
 
@@ -193,6 +194,7 @@ workflowRouter.get("/", authMiddleware, async (req, res) => {
       include: {
         webhook: true,
         worflowExecutions: true,
+        nodes : true
       },
     });
 
@@ -370,7 +372,7 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
             throw new Error("Invalid node data");
           }
 
-          await tx.node.update({
+          await tx.node.create({
             where: { id: node.id },
             data: {
               position: node.position,
