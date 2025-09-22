@@ -16,7 +16,6 @@ export function NodeSidebar({ onAddNode }: NodeSidebarProps) {
   }
 
   const handleAddNode = (type: string) => {
-    // Add node at center of viewport
     onAddNode(type, { x: 400, y: 300 })
   }
 

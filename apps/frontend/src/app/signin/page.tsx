@@ -49,7 +49,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-800/80 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-2 mb-6">
@@ -66,7 +66,7 @@ export default function SignInPage() {
           </p>
         </div>
 
-        <Card className="bg-card border-border">
+        <Card className="bg-gray-800/90 border-border">
           <CardHeader>
             <CardTitle className="text-card-foreground">Sign In</CardTitle>
             <CardDescription>
@@ -87,7 +87,7 @@ export default function SignInPage() {
                   value={formData.username}
                   onChange={handleInputChange}
                   required
-                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
+                  className="bg-gray-800/80 border-border text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
@@ -112,7 +112,7 @@ export default function SignInPage() {
                     value={formData.password}
                     onChange={handleInputChange}
                     required
-                    className="bg-background border-border text-foreground placeholder:text-muted-foreground pr-10"
+                    className="bg-gray-800/80 border-border text-foreground placeholder:text-muted-foreground pr-10"
                   />
                   <Button
                     type="button"

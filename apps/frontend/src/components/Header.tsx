@@ -29,7 +29,7 @@ export function DashboardHeader() {
   const { data } = useSession();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-gray-800/95 backdrop-blur supports-[backdrop-filter]:bg-gray-800/60">
       <div className="flex px-4 h-20 max-w-screen-2xl items-center">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
@@ -55,16 +55,6 @@ export function DashboardHeader() {
 
 
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <Button asChild className="hidden sm:flex">
-            <Link
-              href="/dashboard/workflows/new"
-              className="flex items-center space-x-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Workflow</span>
-            </Link>
-          </Button>
-
           <Button
             variant="ghost"
             size="icon"

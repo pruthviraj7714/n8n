@@ -6,7 +6,7 @@ import { Bot, Mail, MessageCircle, Zap, ArrowRight, CheckCircle } from "lucide-r
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-800/50">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
