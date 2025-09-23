@@ -29,7 +29,7 @@ export const ObjectIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, {
 
 export const UserSchema = z.object({
   id: ObjectIdSchema,
-  email: z.string().email("Invalid email format"),
+  email: z.email("Invalid email format"),
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
@@ -64,15 +64,20 @@ export const UpdateWebhookSchema = WebhookSchema.partial().omit({
 });
 
 export const NodeSchema = z.object({
+  tempId : z.string(),
   type: NodeTypeSchema,
-  triggerType: TriggerTypeSchema.optional(),
+  triggerType: TriggerTypeSchema.nullable(),
   position: z.record(z.string(), z.number()),
-  actionPlatform: PlatformSchema.optional(),
+  actionPlatform: PlatformSchema.nullable(),
   action: z.record(z.string(), z.any()).optional(),
   data: z.record(z.string(), z.any()).optional(),
 });
 
-
+export const ConnectionSchema = z.object({
+  sourceId   : z.string(),
+  targetId   : z.string(),
+  workflowId : z.string(),
+})
 
 export const NodeWithWebhookSchema = NodeSchema.extend({
   webhook: WebhookSchema.optional(),
@@ -81,18 +86,18 @@ export const NodeWithWebhookSchema = NodeSchema.extend({
 export const WorkflowSchema = z.object({
   title: z.string().min(1, "Title is required"),
   enabled: z.boolean(),
-  connections: z.array(z.any()),
   nodes: z.array(NodeSchema),
-  worflowExecutions: z.array(z.any()), 
+  connections : z.array(ConnectionSchema),
+  workflowExecutions: z.array(z.any()), 
 });
 
 export const CreateWorkflowSchema = WorkflowSchema.omit({
-  worflowExecutions: true,
+  workflowExecutions: true,
 });
 
 export const UpdateWorkflowSchema = WorkflowSchema.partial().omit({
   id: true,
-  worflowExecutions: true,
+  workflowExecutions: true,
 });
 
 export const WorkflowWithNodesSchema = WorkflowSchema.extend({
@@ -223,45 +228,3 @@ export const PaginatedResponseSchema = ApiResponseSchema.extend({
     totalPages: z.number(),
   }),
 });
-
-export type User = z.infer<typeof UserSchema>;
-export type CreateUser = z.infer<typeof CreateUserSchema>;
-export type UpdateUser = z.infer<typeof UpdateUserSchema>;
-
-export type Workflow = z.infer<typeof WorkflowSchema>;
-export type CreateWorkflow = z.infer<typeof CreateWorkflowSchema>;
-export type UpdateWorkflow = z.infer<typeof UpdateWorkflowSchema>;
-
-export type Node = z.infer<typeof NodeSchema>;
-
-export type Webhook = z.infer<typeof WebhookSchema>;
-export type CreateWebhook = z.infer<typeof CreateWebhookSchema>;
-export type UpdateWebhook = z.infer<typeof UpdateWebhookSchema>;
-
-export type WorkflowExecutions = z.infer<typeof WorkflowExecutionsSchema>;
-export type CreateWorkflowExecutions = z.infer<
-  typeof CreateWorkflowExecutionsSchema
->;
-export type UpdateWorkflowExecutions = z.infer<
-  typeof UpdateWorkflowExecutionsSchema
->;
-
-export type Credentials = z.infer<typeof CredentialsSchema>;
-export type CreateCredentials = z.infer<typeof CreateCredentialsSchema>;
-export type UpdateCredentials = z.infer<typeof UpdateCredentialsSchema>;
-
-export type AvailableCredentialsApplications = z.infer<
-  typeof AvailableCredentialsApplicationsSchema
->;
-export type CreateAvailableCredentialsApplications = z.infer<
-  typeof CreateAvailableCredentialsApplicationsSchema
->;
-export type UpdateAvailableCredentialsApplications = z.infer<
-  typeof UpdateAvailableCredentialsApplicationsSchema
->;
-
-export type LoginRequest = z.infer<typeof LoginSchema>;
-export type RegisterRequest = z.infer<typeof RegisterSchema>;
-export type PaginationQuery = z.infer<typeof PaginationSchema>;
-export type ApiResponse = z.infer<typeof ApiResponseSchema>;
-export type PaginatedResponse = z.infer<typeof PaginatedResponseSchema>;

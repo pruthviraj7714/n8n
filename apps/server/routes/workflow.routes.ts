@@ -3,7 +3,6 @@ import authMiddleware from "../middlewares/authMiddleware";
 import {
   CreateWorkflowSchema,
   UpdateWorkflowSchema,
-  ObjectIdSchema,
   NodeSchema,
 } from "@repo/common";
 import prisma from "@repo/db";
@@ -31,7 +30,7 @@ workflowRouter.post("/", authMiddleware, async (req, res) => {
       });
     }
 
-    const { connections, enabled, title, nodes } = validationResult.data;
+    const { connections, enabled, title, nodes } = req.body;
 
     const userId = req.userId;
 
@@ -42,39 +41,45 @@ workflowRouter.post("/", authMiddleware, async (req, res) => {
       });
     }
 
-    const userIdValidation = ObjectIdSchema.safeParse(userId);
-    if (!userIdValidation.success) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID format",
-      });
-    }
-
     let validNodes = 0;
-
     nodes.forEach((node) => {
-      const { success } = NodeSchema.safeParse(node);
+      const { success, error } = NodeSchema.safeParse(node);
       if (success) validNodes += 1;
     });
 
     if (validNodes !== nodes.length) {
       return res.status(400).json({
+        success: false,
         message: "Invalid nodes provided",
       });
     }
 
     const triggerNode = nodes.find((n) => n.type === "TRIGGER");
-
     if (!triggerNode) {
-      res.status(400).json({
+      return res.status(400).json({
+        success: false,
         message: "Trigger Node Not found!",
       });
-      return;
     }
 
     const isTriggerNodeWithWebhook = triggerNode.triggerType === "WEBHOOK";
-
     const actionNodes = nodes.filter((n) => n.type === "ACTION");
+
+    if (connections && connections.length > 0) {
+      const nodeTempIds = nodes.map((n) => n.tempId);
+      const invalidConnections = connections.filter(
+        (conn) =>
+          !nodeTempIds.includes(conn.sourceTempId) ||
+          !nodeTempIds.includes(conn.targetTempId)
+      );
+
+      if (invalidConnections.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid connections: referenced nodes do not exist",
+        });
+      }
+    }
 
     const workflow = await prisma.$transaction(async (tx) => {
       const workflow = await tx.workflow.create({
@@ -82,21 +87,24 @@ workflowRouter.post("/", authMiddleware, async (req, res) => {
           userId,
           title,
           enabled,
-          connections,
         },
       });
 
-      const tn = await tx.node.create({
+      const nodeIdMapping : Record<string, string> = {};
+      const createdNodes = [];
+
+      const createdTriggerNode = await tx.node.create({
         data: {
           position: triggerNode.position,
           type: triggerNode.type,
           triggerType: triggerNode.triggerType,
-          data: triggerNode.data,
+          data: triggerNode.data || {},
           workflowId: workflow.id,
         },
       });
 
-      let webhookId;
+      nodeIdMapping[triggerNode.tempId] = createdTriggerNode.id;
+      createdNodes.push(createdTriggerNode);
 
       if (isTriggerNodeWithWebhook) {
         const path = createRandomPathForWebhook();
@@ -104,54 +112,66 @@ workflowRouter.post("/", authMiddleware, async (req, res) => {
         const webhook = await tx.webhook.create({
           data: {
             path,
-            nodeId: tn.id,
+            nodeId: createdTriggerNode.id,
             workflowId: workflow.id,
           },
         });
-
-        webhookId = webhook.id;
       }
 
-      if (webhookId !== undefined) {
-        await tx.node.update({
-          where: {
-            id: tn.id,
-          },
+      for (const actionNode of actionNodes) {
+        const createdActionNode = await tx.node.create({
           data: {
-            webhook: { connect: { id: webhookId } },
+            position: actionNode.position,
+            type: actionNode.type,
+            data: actionNode.data || {},
+            workflowId: workflow.id,
+            actionPlatform: actionNode.actionPlatform,
+            action: actionNode.action || {},
           },
         });
+
+        nodeIdMapping[actionNode.tempId] = createdActionNode.id;
+        createdNodes.push(createdActionNode);
       }
 
-      const actions = await Promise.all(
-        actionNodes.map((n) =>
-          tx.node.create({
+      if (connections && connections.length > 0) {
+        const connectionPromises = connections.map((conn) => {
+          const sourceId = nodeIdMapping[conn.sourceTempId];
+          const targetId = nodeIdMapping[conn.targetTempId];
+
+          if (!sourceId || !targetId) {
+            throw new Error(
+              `Invalid connection mapping: ${conn.sourceTempId} -> ${conn.targetTempId}`
+            );
+          }
+
+          return tx.connection.create({
             data: {
-              position: n.position,
-              type: n.type,
-              data: n.data,
+              sourceId,
+              targetId,
               workflowId: workflow.id,
-              actionPlatform: n.actionPlatform,
-              action: n.action,
             },
-          })
-        )
-      );
+          });
+        });
 
-      const nodeIds = [tn.id, ...actions.map((ac) => ac.id)];
+        await Promise.all(connectionPromises);
+      }
 
-      await tx.workflow.update({
-        where: {
-          id: workflow.id,
-        },
-        data: {
+      const workflowWithData = await tx.workflow.findUnique({
+        where: { id: workflow.id },
+        include: {
           nodes: {
-            connect: nodeIds.map((id) => ({ id })),
+            include: {
+              webhook: true,
+              outgoingConnections: true,
+              incomingConnections: true,
+            },
           },
+          connections: true,
         },
       });
 
-      return workflow;
+      return workflowWithData;
     });
 
     res.status(201).json({
@@ -159,11 +179,29 @@ workflowRouter.post("/", authMiddleware, async (req, res) => {
       message: "Workflow created successfully",
       data: workflow,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating workflow:", error);
+
+    if (error.message.includes("Invalid connection mapping")) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid node connections",
+        error: error.message,
+      });
+    }
+
+    if (error.code === "P2002") {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate constraint violation",
+        error: "A unique constraint was violated",
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });
@@ -179,22 +217,15 @@ workflowRouter.get("/", authMiddleware, async (req, res) => {
       });
     }
 
-    const userIdValidation = ObjectIdSchema.safeParse(userId);
-    if (!userIdValidation.success) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID format",
-      });
-    }
-
     const workflows = await prisma.workflow.findMany({
       where: {
         userId,
       },
       include: {
         webhook: true,
-        worflowExecutions: true,
-        nodes : true
+        workflowExecutions: true,
+        nodes: true,
+        connections: true,
       },
     });
 
@@ -230,7 +261,8 @@ workflowRouter.get("/:workflowId", authMiddleware, async (req, res) => {
       },
       include: {
         nodes: true,
-        worflowExecutions: true,
+        workflowExecutions: true,
+        connections : true,
         webhook: true,
       },
     });
@@ -256,77 +288,65 @@ workflowRouter.get("/:workflowId", authMiddleware, async (req, res) => {
   }
 });
 
-workflowRouter.patch("/toggle/:workflowId", authMiddleware, async (req, res) => {
-  try {
-    const { workflowId } = req.params;
-    const { enabled } = req.body;
-    const userId = req.userId;
+workflowRouter.patch(
+  "/toggle/:workflowId",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const { workflowId } = req.params;
+      const { enabled } = req.body;
+      const userId = req.userId;
 
-    if (!userId) {
-      return res.status(401).json({
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
+      }
+
+      const workflow = await prisma.workflow.update({
+        where: {
+          id: workflowId,
+          userId,
+        },
+        data: {
+          enabled,
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Workflow toggled successfully",
+      });
+    } catch (error: any) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        return res.status(404).json({
+          success: false,
+          message: "Workflow not found",
+        });
+      }
+
+      console.error("Error fetching workflow:", error);
+      res.status(500).json({
         success: false,
-        message: "User not authenticated",
+        message: "Internal Server Error",
       });
     }
-
-    const workflow = await prisma.workflow.update({
-      where: {
-        id: workflowId,
-        userId,
-      },
-      data: {
-        enabled,
-      },
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Workflow toggled successfully",
-    });
-  } catch (error: any) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2025"
-    ) {
-      return res.status(404).json({
-        success: false,
-        message: "Workflow not found",
-      });
-    }
-
-    console.error("Error fetching workflow:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-    });
   }
-});
+);
 
 workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
   try {
-    const { workflowId } = req.params;
+    const workflowId  = req.params.workflwoId as string;
     const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({
         success: false,
         message: "User not authenticated",
-      });
-    }
-
-    const workflowIdValidation = ObjectIdSchema.safeParse(workflowId);
-    if (!workflowIdValidation.success) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid workflow ID format",
-      });
-    }
-
-    const userIdValidation = ObjectIdSchema.safeParse(userId);
-    if (!userIdValidation.success) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID format",
       });
     }
 
@@ -339,12 +359,16 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
       });
     }
 
-    const updateData = validationResult.data;
+    const { title, enabled, nodes, connections, deletedNodeIds = [] } = validationResult.data;
 
     const existingWorkflow = await prisma.workflow.findFirst({
       where: {
         id: workflowId,
         userId: userId,
+      },
+      include: {
+        nodes: true,
+        connections: true,
       },
     });
 
@@ -355,43 +379,164 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
       });
     }
 
+    const nodeValidationErrors : any = [];
+    nodes.forEach((node, index) => {
+      const validation = NodeUnionSchema.safeParse(node);
+      if (!validation.success) {
+        nodeValidationErrors.push(`Node ${index}: ${validation.error.message}`);
+      }
+    });
+
+    if (nodeValidationErrors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid nodes provided",
+        errors: nodeValidationErrors,
+      });
+    }
+
+    // Validate connections reference valid nodes
+    if (connections && connections.length > 0) {
+      const nodeIds = nodes.map(n => n.id || n.tempId);
+      const invalidConnections = connections.filter(conn => 
+        !nodeIds.includes(conn.sourceTempId) || !nodeIds.includes(conn.targetTempId)
+      );
+      
+      if (invalidConnections.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid connections: referenced nodes do not exist",
+          invalidConnections,
+        });
+      }
+    }
+
     const updatedWorkflow = await prisma.$transaction(async (tx) => {
-      const wf = await tx.workflow.update({
+      // 1. Update workflow basic info
+      const workflow = await tx.workflow.update({
         where: { id: workflowId },
         data: {
-          title: updateData.title,
-          enabled: updateData.enabled,
-          connections: updateData.connections,
+          title,
+          enabled,
         },
       });
 
-      if (updateData.nodes && updateData.nodes.length > 0) {
-        for (const node of updateData.nodes) {
-          const { success } = NodeSchema.safeParse(node);
-          if (!success) {
-            throw new Error("Invalid node data");
+      // 2. Handle deleted nodes if any
+      if (deletedNodeIds && deletedNodeIds.length > 0) {
+        // Delete connections first (foreign key constraints)
+        await tx.connection.deleteMany({
+          where: {
+            OR: [
+              { sourceId: { in: deletedNodeIds } },
+              { targetId: { in: deletedNodeIds } }
+            ]
           }
+        });
 
-          await tx.node.create({
-            where: { id: node.id },
+        // Delete webhooks associated with deleted nodes
+        await tx.webhook.deleteMany({
+          where: {
+            nodeId: { in: deletedNodeIds }
+          }
+        });
+
+        // Delete the nodes
+        await tx.node.deleteMany({
+          where: { 
+            id: { in: deletedNodeIds },
+            workflowId: workflowId // Safety check
+          }
+        });
+      }
+
+      // 3. Process nodes - separate existing and new
+      const nodeIdMapping = {};
+      
+      for (const nodeData of nodes) {
+        if (nodeData.id) {
+          // Update existing node
+          const updatedNode = await tx.node.update({
+            where: { id: nodeData.id },
             data: {
-              position: node.position,
-              type: node.type,
-              triggerType: node.triggerType,
-              data: node.data,
-              actionPlatform: node.actionPlatform,
-              action: node.action,
-            },
+              position: nodeData.position,
+              triggerType: nodeData.triggerType || null,
+              actionPlatform: nodeData.actionPlatform || null,
+              action: nodeData.action || {},
+              data: nodeData.data || {},
+            }
           });
+          
+          nodeIdMapping[nodeData.id] = updatedNode.id;
+        } else if (nodeData.tempId) {
+          // Create new node
+          const newNode = await tx.node.create({
+            data: {
+              type: nodeData.type,
+              position: nodeData.position,
+              triggerType: nodeData.triggerType || null,
+              actionPlatform: nodeData.actionPlatform || null,
+              action: nodeData.action || {},
+              data: nodeData.data || {},
+              workflowId: workflowId,
+            }
+          });
+
+          // Handle webhook for new trigger nodes
+          if (nodeData.type === "TRIGGER" && nodeData.triggerType === "WEBHOOK") {
+            const path = createRandomPathForWebhook();
+            
+            await tx.webhook.create({
+              data: {
+                path,
+                nodeId: newNode.id,
+                workflowId: workflowId,
+              },
+            });
+          }
+          
+          nodeIdMapping[nodeData.tempId] = newNode.id;
         }
       }
 
-      return tx.workflow.findUnique({
+      // 4. Recreate all connections (simpler than trying to update)
+      // Delete existing connections for this workflow
+      await tx.connection.deleteMany({
+        where: { workflowId: workflowId }
+      });
+
+      // Create new connections
+      if (connections && connections.length > 0) {
+        const connectionPromises = connections.map(conn => {
+          const sourceId = nodeIdMapping[conn.sourceTempId];
+          const targetId = nodeIdMapping[conn.targetTempId];
+
+          if (!sourceId || !targetId) {
+            throw new Error(`Invalid connection mapping: ${conn.sourceTempId} -> ${conn.targetTempId}`);
+          }
+
+          return tx.connection.create({
+            data: {
+              sourceId,
+              targetId,
+              workflowId: workflowId,
+            },
+          });
+        });
+
+        await Promise.all(connectionPromises);
+      }
+
+      return await tx.workflow.findUnique({
         where: { id: workflowId },
         include: {
           nodes: {
-            include: { webhook: true },
+            include: {
+              webhook: true,
+              outgoingConnections: true,
+              incomingConnections: true,
+            }
           },
+          connections: true,
           webhook: true,
         },
       });
@@ -402,11 +547,39 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
       message: "Workflow updated successfully",
       data: updatedWorkflow,
     });
-  } catch (error) {
+
+  } catch (error : any) {
     console.error("Error updating workflow:", error);
+    
+    // Provide more specific error messages
+    if (error.message.includes("Invalid connection mapping")) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid node connections",
+        error: error.message,
+      });
+    }
+
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate constraint violation",
+        error: "A unique constraint was violated",
+      });
+    }
+
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        message: "Record not found",
+        error: "One or more records could not be found",
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -422,13 +595,6 @@ workflowRouter.delete("/:workflowId", authMiddleware, async (req, res) => {
         .json({ success: false, message: "User not authenticated" });
     }
 
-    const workflowIdValidation = ObjectIdSchema.safeParse(workflowId);
-    if (!workflowIdValidation.success) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid workflow ID format" });
-    }
-
     const existingWorkflow = await prisma.workflow.findFirst({
       where: { id: workflowId, userId },
     });
@@ -440,11 +606,7 @@ workflowRouter.delete("/:workflowId", authMiddleware, async (req, res) => {
       });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.node.deleteMany({ where: { workflowId } });
-      await tx.workflowExecutions.deleteMany({ where: { workflowId } });
-      await tx.workflow.delete({ where: { id: workflowId } });
-    });
+    await prisma.workflow.delete({ where: { id: workflowId } });
 
     res.status(200).json({
       success: true,
