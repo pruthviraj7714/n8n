@@ -64,7 +64,7 @@ export const UpdateWebhookSchema = WebhookSchema.partial().omit({
 });
 
 export const NodeSchema = z.object({
-  tempId : z.string(),
+  tempId: z.string(),
   type: NodeTypeSchema,
   triggerType: TriggerTypeSchema.nullable(),
   position: z.record(z.string(), z.number()),
@@ -74,10 +74,9 @@ export const NodeSchema = z.object({
 });
 
 export const ConnectionSchema = z.object({
-  sourceId   : z.string(),
-  targetId   : z.string(),
-  workflowId : z.string(),
-})
+  sourceTempId: z.string(),
+  targetTempId: z.string(),
+});
 
 export const NodeWithWebhookSchema = NodeSchema.extend({
   webhook: WebhookSchema.optional(),
@@ -87,8 +86,8 @@ export const WorkflowSchema = z.object({
   title: z.string().min(1, "Title is required"),
   enabled: z.boolean(),
   nodes: z.array(NodeSchema),
-  connections : z.array(ConnectionSchema),
-  workflowExecutions: z.array(z.any()), 
+  connections: z.array(ConnectionSchema),
+  workflowExecutions: z.array(z.any()),
 });
 
 export const CreateWorkflowSchema = WorkflowSchema.omit({
