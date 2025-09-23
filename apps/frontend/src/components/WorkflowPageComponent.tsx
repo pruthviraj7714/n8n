@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import ReactFlow, {
   type Node,
   addEdge,
@@ -26,6 +26,7 @@ import {
   Send,
   MessageSquare,
   X,
+  Loader2,
 } from "lucide-react";
 import Modal from "@/components/Modal";
 import TriggerForm from "@/components/forms/TriggerForm";
@@ -147,7 +148,11 @@ const nodeTypes: NodeTypes = {
 
 type ModalType = "trigger" | "action-select" | "resend" | "telegram"
 
-const CreateWorkflowPage = () => {
+interface EditWorkflowPageProps {
+  workflowId: string;
+}
+
+const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [workflowTitle, setWorkflowTitle] = useState("");
@@ -155,10 +160,64 @@ const CreateWorkflowPage = () => {
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [modalType, setModalType] = useState<ModalType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(true);
+  const [originalWorkflow, setOriginalWorkflow] = useState<any>(null);
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const { data } = useSession();
   const router = useRouter();
+
+  useEffect(() => {
+    const loadWorkflow = async () => {
+      if (!workflowId || !data?.accessToken) return;
+
+      setIsLoadingWorkflow(true);
+      try {
+        const response = await axios.get(`${BACKEND_URL}/api/v1/workflow/${workflowId}`, {
+          headers: {
+            Authorization: `Bearer ${data.accessToken}`,
+          },
+        });
+
+        const workflowData = response.data.data;
+        setOriginalWorkflow(workflowData);
+        setWorkflowTitle(workflowData.title);
+        setIsEnabled(workflowData.enabled);
+
+        const reactFlowNodes = workflowData.nodes.map((dbNode: any) => ({
+          id: dbNode.id, 
+          type: dbNode.type.toLowerCase(),
+          position: dbNode.position,
+          data: {
+            ...dbNode.data,
+            triggerType: dbNode.triggerType,
+            actionPlatform: dbNode.actionPlatform,
+            action: dbNode.action || {},
+            label: dbNode.type === "TRIGGER" ? "Trigger Node" : "Action Node",
+          },
+        }));
+
+        const reactFlowEdges = workflowData.connections.map((conn: any, index: number) => ({
+          id: conn.id || `edge-${index}`,
+          source: conn.sourceId,
+          target: conn.targetId,
+          type: 'default',
+        }));
+
+        setNodes(reactFlowNodes);
+        setEdges(reactFlowEdges);
+
+      } catch (error) {
+        console.error("Error loading workflow:", error);
+        toast.error("Failed to load workflow");
+        router.push('/dashboard');
+      } finally {
+        setIsLoadingWorkflow(false);
+      }
+    };
+
+    loadWorkflow();
+  }, [workflowId, data?.accessToken, setNodes, setEdges, router]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -233,7 +292,12 @@ const CreateWorkflowPage = () => {
     setSelectedNode(null);
   };
 
-  const saveWorkflow = async () => {
+  const deleteNode = useCallback((nodeId: string) => {
+    setNodes((nds) => nds.filter((node) => node.id !== nodeId));
+    setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+  }, [setNodes, setEdges]);
+
+  const updateWorkflow = async () => {
     if (!workflowTitle.trim()) {
       toast.warning("Please enter a workflow title", { position : "top-center"});
       return;
@@ -253,48 +317,62 @@ const CreateWorkflowPage = () => {
     setIsLoading(true);
 
     try {
+      const existingNodes = nodes.filter(node => 
+        originalWorkflow?.nodes?.some((dbNode: any) => dbNode.id === node.id)
+      );
+      const newNodes = nodes.filter(node => 
+        !originalWorkflow?.nodes?.some((dbNode: any) => dbNode.id === node.id)
+      );
+
       const workflowData = {
         title: workflowTitle,
         enabled: isEnabled,
-        nodes: nodes.map((node) => ({
-          tempId: node.id,
-          type: node.type?.toUpperCase() as 'TRIGGER' | 'ACTION',
-          position: node.position,
-          triggerType: node.data.triggerType || null,
-          actionPlatform: node.data.actionPlatform || null,
-          action: node.data.action || {},
-          data: {
-            ...node.data,
-            label: undefined,
-          },
-        })),
+        nodes: nodes.map((node) => {
+          const isExistingNode = originalWorkflow?.nodes?.some((dbNode: any) => dbNode.id === node.id);
+          
+          return {
+            ...(isExistingNode ? { id: node.id } : { tempId: node.id }),
+            type: node.type?.toUpperCase() as 'TRIGGER' | 'ACTION',
+            position: node.position,
+            triggerType: node.data.triggerType || null,
+            actionPlatform: node.data.actionPlatform || null,
+            action: node.data.action || {},
+            data: {
+              ...node.data,
+              label: undefined,
+            },
+          };
+        }),
         connections: edges.map((edge) => ({
           sourceTempId: edge.source,
           targetTempId: edge.target,
         })),
+        deletedNodeIds: originalWorkflow?.nodes
+          ?.filter((dbNode: any) => !nodes.some(node => node.id === dbNode.id))
+          ?.map((dbNode: any) => dbNode.id) || [],
       };
 
-      console.log("Sending workflow data:", workflowData);
+      console.log("Updating workflow data:", workflowData);
 
-      const response = await axios.post(`${BACKEND_URL}/api/v1/workflow`, workflowData, {
+      const response = await axios.put(`${BACKEND_URL}/api/v1/workflow/${workflowId}`, workflowData, {
         headers : {
           Authorization : `Bearer ${data?.accessToken}`,
           'Content-Type': 'application/json'
         }
       });
       
-      console.log("Workflow created successfully:", response.data);
-      toast.success("Workflow Successfully Created");
+      console.log("Workflow updated successfully:", response.data);
+      toast.success("Workflow Successfully Updated");
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("Error saving workflow:", error);
+      console.error("Error updating workflow:", error);
       
       if (error.response?.data?.message) {
-        toast.error(`Failed to save workflow: ${error.response.data.message}`);
+        toast.error(`Failed to update workflow: ${error.response.data.message}`);
       } else if (error.response?.data?.error) {
-        toast.error(`Failed to save workflow: ${error.response.data.error}`);
+        toast.error(`Failed to update workflow: ${error.response.data.error}`);
       } else {
-        toast.error("Failed to save workflow. Please try again.");
+        toast.error("Failed to update workflow. Please try again.");
       }
     } finally {
       setIsLoading(false);
@@ -353,13 +431,24 @@ const CreateWorkflowPage = () => {
     </Modal>
   );
 
+  if (isLoadingWorkflow) {
+    return (
+      <div className="h-screen bg-slate-800/50 flex items-center justify-center">
+        <div className="flex items-center space-x-2 text-foreground">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>Loading workflow...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen bg-slate-800/50 relative">
       <div className="bg-card/50 backdrop-blur-sm border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <h1 className="text-2xl font-bold text-foreground">
-              Create Workflow
+              Edit Workflow
             </h1>
             <input
               type="text"
@@ -382,12 +471,12 @@ const CreateWorkflowPage = () => {
             </label>
 
             <button
-              onClick={saveWorkflow}
+              onClick={updateWorkflow}
               disabled={isLoading}
               className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50 transition-colors"
             >
               <Save className="w-4 h-4" />
-              <span>{isLoading ? "Saving..." : "Save Workflow"}</span>
+              <span>{isLoading ? "Updating..." : "Update Workflow"}</span>
             </button>
           </div>
         </div>
@@ -447,7 +536,7 @@ const CreateWorkflowPage = () => {
 
           <div className="mt-8 p-3 bg-primary/10 rounded-lg border border-primary/20">
             <p className="text-sm text-primary">
-              💡 <strong>Tip:</strong> Double-click on any node to configure it
+              💡 <strong>Tip:</strong> Double-click on any node to configure it. Right-click to delete.
             </p>
           </div>
         </div>
@@ -460,7 +549,13 @@ const CreateWorkflowPage = () => {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeDoubleClick={onNodeDoubleClick}
-            onInit={setReactFlowInstance}
+            onNodeContextMenu={(event, node) => {
+              event.preventDefault();
+              if (window.confirm('Are you sure you want to delete this node?')) {
+                deleteNode(node.id);
+              }
+            }}
+            // onInit={setReactFlowInstance}
             nodeTypes={nodeTypes}
             fitView
             className="bg-slate-800/50"
@@ -479,7 +574,7 @@ const CreateWorkflowPage = () => {
               <div className="text-sm text-muted-foreground">
                 {nodes.length === 0
                   ? "Add nodes from the sidebar to get started"
-                  : "Double-click nodes to configure them"}
+                  : "Double-click nodes to configure them • Right-click to delete"}
               </div>
             </Panel>
           </ReactFlow>
@@ -512,4 +607,4 @@ const CreateWorkflowPage = () => {
   );
 };
 
-export default CreateWorkflowPage;
+export default EditWorkflowPage;
