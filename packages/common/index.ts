@@ -127,24 +127,17 @@ export const UpdateWorkflowExecutionsSchema =
 
 export const CredentialsSchema = z.object({
   id: ObjectIdSchema,
-  title: z.string().min(1, "Title is required"),
   platform: PlatformSchema,
   data: z.record(z.string(), z.any()),
-  userId: ObjectIdSchema,
-  createdAt: z.date(),
-  updatedAt: z.date(),
 });
 
 export const CreateCredentialsSchema = CredentialsSchema.omit({
   id: true,
-  createdAt: true,
-  updatedAt: true,
 });
 
 export const UpdateCredentialsSchema = CredentialsSchema.partial().omit({
   id: true,
-  createdAt: true,
-  updatedAt: true,
+  platform: true,
 });
 
 export const AvailableCredentialsApplicationsSchema = z.object({
