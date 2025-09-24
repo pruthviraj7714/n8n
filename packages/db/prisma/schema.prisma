@@ -87,7 +87,6 @@ model WorkflowExecutions {
 
 model Credentials {
   id        String   @id @default(uuid())
-  title     String
   platform  PLATFORM
   data      Json
   userId    String
