@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Zap, Eye, EyeOff } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -24,18 +25,19 @@ export default function SignInPage() {
     username: "",
     password: "",
   });
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Signin attempt:", formData);
     const res = await signIn("credentials", {
       username: formData.username,
       password: formData.password,
-      callbackUrl: "/dashboard",
+      redirect : false
     });
 
     if (res?.ok) {
       toast.success("User Successfully Logged In");
+      router.push('/dashboard');
     } else {
       toast.error(res?.error);
     }

@@ -25,11 +25,9 @@ const TelegramActionForm = ({
   const handleSave = () => {
     const data = {
       actionPlatform: "TELEGRAM",
-      action: {
-        chatId: formData.chatId,
-        message: formData.message,
-        parseMode: formData.parseMode,
-      },
+      chatId: formData.chatId,
+      message: formData.message,
+      parseMode: formData.parseMode,
     };
     onSave(data);
     onClose();

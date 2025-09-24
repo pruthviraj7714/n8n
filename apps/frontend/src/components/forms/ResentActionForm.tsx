@@ -26,12 +26,10 @@ const ResendActionForm = ({
   const handleSave = () => {
     const data = {
       actionPlatform: "RESEND",
-      action: {
         to: formData.to,
         from: formData.from,
         subject: formData.subject,
         html: formData.html,
-      },
     };
     onSave(data);
     onClose();

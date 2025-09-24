@@ -163,6 +163,7 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
   const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(true);
   const [originalWorkflow, setOriginalWorkflow] = useState<any>(null);
   const reactFlowWrapper = useRef(null);
+  const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const { data } = useSession();
   const router = useRouter();
@@ -379,6 +380,25 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
     }
   };
 
+  const executeWorkflow = async () => {
+    if(!data || !data.accessToken) return;
+    setIsExecuting(true);
+    
+    try {
+      const res = await axios.post(`${BACKEND_URL}/api/v1/workflow/execute-workflow/${workflowId}`, {}, {
+        headers : {
+          Authorization : `Bearer ${data.accessToken}`
+        }
+      })
+
+      toast.success("Workflow Initiated")
+    } catch (error : any) {
+      toast.error(error.response.data.message || error.message);
+      setIsExecuting(false);
+    }
+
+  }
+
   const PlatformSelectModal = () => (
     <Modal isOpen={modalType === "action-select"} onClose={closeModal}>
       <div className="p-6">
@@ -460,6 +480,18 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
           </div>
 
           <div className="flex items-center space-x-4">
+            <div>
+              {nodes && nodes.length > 0 && nodes.find((node) => node.data.triggerType === "MANUAL") && (
+                 <button
+                 onClick={executeWorkflow}
+                 disabled={isExecuting}
+                 className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50 transition-colors"
+               >
+                 <Save className="w-4 h-4" />
+                 <span>{isExecuting ? "Executing..." : "Execute Workflow"}</span>
+               </button>
+              )}
+            </div>
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -555,7 +587,7 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
                 deleteNode(node.id);
               }
             }}
-            // onInit={setReactFlowInstance}
+            onInit={setReactFlowInstance}
             nodeTypes={nodeTypes}
             fitView
             className="bg-slate-800/50"
