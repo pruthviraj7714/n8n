@@ -63,24 +63,16 @@ const PLATFORMS = {
       },
     ],
   },
-  GMAIL: {
-    name: "Gmail",
+  RESEND: {
+    name: "Resend",
     icon: Mail,
     color: "bg-red-500",
     fields: [
-      { name: "email", label: "Email Address", type: "email", required: true },
       {
-        name: "appPassword",
-        label: "App Password",
+        name: "resendAPIKey",
+        label: "Resend API Key",
         type: "password",
         required: true,
-      },
-      { name: "clientId", label: "Client ID", type: "text", required: false },
-      {
-        name: "clientSecret",
-        label: "Client Secret",
-        type: "password",
-        required: false,
       },
     ],
   },

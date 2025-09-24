@@ -31,7 +31,7 @@ import {
 import Modal from "@/components/Modal";
 import TriggerForm from "@/components/forms/TriggerForm";
 import TelegramActionForm from "@/components/forms/TelegramActionForm";
-import ResendActionForm from "@/components/forms/ResentActionForm";
+import ResendActionForm from "@/components/forms/ResendActionForm";
 import axios from "axios";
 import { BACKEND_URL } from "@/lib/config";
 import { toast } from "sonner";

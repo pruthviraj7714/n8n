@@ -2,10 +2,11 @@ import { Worker } from "bullmq";
 import redisclient from "@repo/redisclient";
 import prisma from "@repo/db";
 import { sendTelegramMessage } from "./actionNodes/telegram";
+import { sendResendEmail } from "./actionNodes/resend";
 
 type NodeResult = Record<string, any>;
 
-const runWorkerFlow = async (workflowId: string, userId : string) => {
+const runWorkerFlow = async (workflowId: string, userId: string) => {
   try {
     const workflow = await prisma.workflow.findFirst({
       where: { id: workflowId },
@@ -66,7 +67,7 @@ const runWorkerFlow = async (workflowId: string, userId : string) => {
 async function executeNode(
   node: any,
   results: Record<string, NodeResult>,
-  userId : string
+  userId: string
 ): Promise<any> {
   switch (node.type) {
     case "TRIGGER":
@@ -75,11 +76,12 @@ async function executeNode(
     case "ACTION": {
       switch (node.actionPlatform) {
         case "TELEGRAM":
-          const result = await sendTelegramMessage(node, userId);
-          return { success: true, result };
+          const res1 = await sendTelegramMessage(node, userId);
+          return { success: res1.success, result: res1.message };
 
         case "RESEND":
-          return { transformed: results[node.parentId] };
+          const res2 = await sendResendEmail(node, userId);
+          return { success: res2.success, result: res2.message };
       }
       break;
     }

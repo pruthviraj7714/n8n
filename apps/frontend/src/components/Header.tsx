@@ -49,7 +49,7 @@ export function DashboardHeader() {
         <div className="mr-4 hidden md:flex">
           <Link href="/dashboard" className="mr-6 flex items-center space-x-2">
             <Zap className="h-6 w-6 text-primary" />
-            <span className="hidden font-bold sm:inline-block">n8n MVP</span>
+            <span className="hidden font-bold sm:inline-block">n8n</span>
           </Link>
         </div>
 
@@ -121,7 +121,7 @@ function MobileNav() {
     <div className="flex flex-col space-y-3">
       <Link href="/dashboard" className="flex items-center space-x-2">
         <Zap className="h-6 w-6 text-primary" />
-        <span className="font-bold">n8n MVP</span>
+        <span className="font-bold">n8n</span>
       </Link>
 
       <Button asChild className="w-full justify-start">
