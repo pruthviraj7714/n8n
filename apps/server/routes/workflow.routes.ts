@@ -43,7 +43,7 @@ workflowRouter.post("/", authMiddleware, async (req, res) => {
 
     let validNodes = 0;
     nodes.forEach((node) => {
-      const { success, error } = NodeSchema.safeParse(node);
+      const { success } = NodeSchema.safeParse(node);
       if (success) validNodes += 1;
     });
 
@@ -395,7 +395,6 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
       });
     }
 
-    // Validate connections reference valid nodes
     if (connections && connections.length > 0) {
       const nodeIds = nodes.map(n => n.id || n.tempId);
       const invalidConnections = connections.filter(conn => 
@@ -421,9 +420,7 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
         },
       });
 
-      // 2. Handle deleted nodes if any
       if (deletedNodeIds && deletedNodeIds.length > 0) {
-        // Delete connections first (foreign key constraints)
         await tx.connection.deleteMany({
           where: {
             OR: [
@@ -433,28 +430,24 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
           }
         });
 
-        // Delete webhooks associated with deleted nodes
         await tx.webhook.deleteMany({
           where: {
             nodeId: { in: deletedNodeIds }
           }
         });
 
-        // Delete the nodes
         await tx.node.deleteMany({
           where: { 
             id: { in: deletedNodeIds },
-            workflowId: workflowId // Safety check
+            workflowId: workflowId 
           }
         });
       }
 
-      // 3. Process nodes - separate existing and new
       const nodeIdMapping = {};
       
       for (const nodeData of nodes) {
         if (nodeData.id) {
-          // Update existing node
           const updatedNode = await tx.node.update({
             where: { id: nodeData.id },
             data: {
@@ -468,7 +461,6 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
           
           nodeIdMapping[nodeData.id] = updatedNode.id;
         } else if (nodeData.tempId) {
-          // Create new node
           const newNode = await tx.node.create({
             data: {
               type: nodeData.type,
@@ -481,7 +473,6 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
             }
           });
 
-          // Handle webhook for new trigger nodes
           if (nodeData.type === "TRIGGER" && nodeData.triggerType === "WEBHOOK") {
             const path = createRandomPathForWebhook();
             
@@ -498,13 +489,10 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
         }
       }
 
-      // 4. Recreate all connections (simpler than trying to update)
-      // Delete existing connections for this workflow
       await tx.connection.deleteMany({
         where: { workflowId: workflowId }
       });
 
-      // Create new connections
       if (connections && connections.length > 0) {
         const connectionPromises = connections.map(conn => {
           const sourceId = nodeIdMapping[conn.sourceTempId];
@@ -551,7 +539,6 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
   } catch (error : any) {
     console.error("Error updating workflow:", error);
     
-    // Provide more specific error messages
     if (error.message.includes("Invalid connection mapping")) {
       return res.status(400).json({
         success: false,

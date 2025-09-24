@@ -11,7 +11,7 @@ app.use(cors())
 
 app.use('/api/v1/user', userRouter);
 app.use('/api/v1/workflow', workflowRouter);
-app.use('/api/v1/credential', credentialRouter);
+app.use('/api/v1/credentials', credentialRouter);
 
 
 app.listen(3001, () => {
