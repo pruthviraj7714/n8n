@@ -37,8 +37,9 @@ import { BACKEND_URL } from "@/lib/config";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import ExecutionPanel from "./ExecutionPanel";
 
-const TriggerNode = ({ data, selected } : { data : any, selected : boolean}) => {
+const TriggerNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const getTriggerIcon = () => {
     switch (data.triggerType) {
       case "WEBHOOK":
@@ -89,7 +90,7 @@ const TriggerNode = ({ data, selected } : { data : any, selected : boolean}) => 
   );
 };
 
-const ActionNode = ({ data, selected } : {data : any, selected : boolean}) => {
+const ActionNode = ({ data, selected }: { data: any; selected: boolean }) => {
   const getActionIcon = () => {
     switch (data.actionPlatform) {
       case "TELEGRAM":
@@ -146,7 +147,13 @@ const nodeTypes: NodeTypes = {
   action: ActionNode,
 };
 
-type ModalType = "trigger" | "action-select" | "resend" | "telegram"
+type ModalType = "trigger" | "action-select" | "resend" | "telegram";
+
+interface ILog {
+  message: string;
+  nodeId: string;
+  type: "NODE_EXECUTED" | "TRIGGER_EXECUTED" | "ERROR" | "COMPLETED";
+}
 
 interface EditWorkflowPageProps {
   workflowId: string;
@@ -165,6 +172,8 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
   const reactFlowWrapper = useRef(null);
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [isExecutionPanelOpen, setIsExecutionPanelOpen] = useState(false);
+  const [logs, setLogs] = useState<ILog[]>([]);
   const { data } = useSession();
   const router = useRouter();
 
@@ -174,11 +183,14 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
 
       setIsLoadingWorkflow(true);
       try {
-        const response = await axios.get(`${BACKEND_URL}/api/v1/workflow/${workflowId}`, {
-          headers: {
-            Authorization: `Bearer ${data.accessToken}`,
-          },
-        });
+        const response = await axios.get(
+          `${BACKEND_URL}/api/v1/workflow/${workflowId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${data.accessToken}`,
+            },
+          }
+        );
 
         const workflowData = response.data.data;
         setOriginalWorkflow(workflowData);
@@ -186,7 +198,7 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
         setIsEnabled(workflowData.enabled);
 
         const reactFlowNodes = workflowData.nodes.map((dbNode: any) => ({
-          id: dbNode.id, 
+          id: dbNode.id,
           type: dbNode.type.toLowerCase(),
           position: dbNode.position,
           data: {
@@ -198,20 +210,21 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
           },
         }));
 
-        const reactFlowEdges = workflowData.connections.map((conn: any, index: number) => ({
-          id: conn.id || `edge-${index}`,
-          source: conn.sourceId,
-          target: conn.targetId,
-          type: 'default',
-        }));
+        const reactFlowEdges = workflowData.connections.map(
+          (conn: any, index: number) => ({
+            id: conn.id || `edge-${index}`,
+            source: conn.sourceId,
+            target: conn.targetId,
+            type: "default",
+          })
+        );
 
         setNodes(reactFlowNodes);
         setEdges(reactFlowEdges);
-
       } catch (error) {
         console.error("Error loading workflow:", error);
         toast.error("Failed to load workflow");
-        router.push('/dashboard');
+        router.push("/dashboard");
       } finally {
         setIsLoadingWorkflow(false);
       }
@@ -227,7 +240,7 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
     [setEdges]
   );
 
-  const onNodeDoubleClick = useCallback((event : any, node : any) => {
+  const onNodeDoubleClick = useCallback((event: any, node: any) => {
     setSelectedNode(node);
     if (node.type === "trigger") {
       setModalType("trigger");
@@ -282,7 +295,7 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
     [setNodes]
   );
 
-  const handleNodeSave = (data : any) => {
+  const handleNodeSave = (data: any) => {
     if (selectedNode) {
       updateNodeData(selectedNode.id, data);
     }
@@ -293,47 +306,61 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
     setSelectedNode(null);
   };
 
-  const deleteNode = useCallback((nodeId: string) => {
-    setNodes((nds) => nds.filter((node) => node.id !== nodeId));
-    setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
-  }, [setNodes, setEdges]);
+  const deleteNode = useCallback(
+    (nodeId: string) => {
+      setNodes((nds) => nds.filter((node) => node.id !== nodeId));
+      setEdges((eds) =>
+        eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
+      );
+    },
+    [setNodes, setEdges]
+  );
 
   const updateWorkflow = async () => {
     if (!workflowTitle.trim()) {
-      toast.warning("Please enter a workflow title", { position : "top-center"});
+      toast.warning("Please enter a workflow title", {
+        position: "top-center",
+      });
       return;
     }
 
     if (nodes.length === 0) {
-      toast.warning("Please add at least one node to the workflow", { position : "top-center"});
+      toast.warning("Please add at least one node to the workflow", {
+        position: "top-center",
+      });
       return;
     }
 
     const triggerNodes = nodes.filter((n) => n.type === "trigger");
     if (triggerNodes.length === 0) {
-      toast.warning("Please add at least one trigger node", { position : "top-center"});
+      toast.warning("Please add at least one trigger node", {
+        position: "top-center",
+      });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const existingNodes = nodes.filter(node => 
+      const existingNodes = nodes.filter((node) =>
         originalWorkflow?.nodes?.some((dbNode: any) => dbNode.id === node.id)
       );
-      const newNodes = nodes.filter(node => 
-        !originalWorkflow?.nodes?.some((dbNode: any) => dbNode.id === node.id)
+      const newNodes = nodes.filter(
+        (node) =>
+          !originalWorkflow?.nodes?.some((dbNode: any) => dbNode.id === node.id)
       );
 
       const workflowData = {
         title: workflowTitle,
         enabled: isEnabled,
         nodes: nodes.map((node) => {
-          const isExistingNode = originalWorkflow?.nodes?.some((dbNode: any) => dbNode.id === node.id);
-          
+          const isExistingNode = originalWorkflow?.nodes?.some(
+            (dbNode: any) => dbNode.id === node.id
+          );
+
           return {
             ...(isExistingNode ? { id: node.id } : { tempId: node.id }),
-            type: node.type?.toUpperCase() as 'TRIGGER' | 'ACTION',
+            type: node.type?.toUpperCase() as "TRIGGER" | "ACTION",
             position: node.position,
             triggerType: node.data.triggerType || null,
             actionPlatform: node.data.actionPlatform || null,
@@ -348,28 +375,37 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
           sourceTempId: edge.source,
           targetTempId: edge.target,
         })),
-        deletedNodeIds: originalWorkflow?.nodes
-          ?.filter((dbNode: any) => !nodes.some(node => node.id === dbNode.id))
-          ?.map((dbNode: any) => dbNode.id) || [],
+        deletedNodeIds:
+          originalWorkflow?.nodes
+            ?.filter(
+              (dbNode: any) => !nodes.some((node) => node.id === dbNode.id)
+            )
+            ?.map((dbNode: any) => dbNode.id) || [],
       };
 
       console.log("Updating workflow data:", workflowData);
 
-      const response = await axios.put(`${BACKEND_URL}/api/v1/workflow/${workflowId}`, workflowData, {
-        headers : {
-          Authorization : `Bearer ${data?.accessToken}`,
-          'Content-Type': 'application/json'
+      const response = await axios.put(
+        `${BACKEND_URL}/api/v1/workflow/${workflowId}`,
+        workflowData,
+        {
+          headers: {
+            Authorization: `Bearer ${data?.accessToken}`,
+            "Content-Type": "application/json",
+          },
         }
-      });
-      
+      );
+
       console.log("Workflow updated successfully:", response.data);
       toast.success("Workflow Successfully Updated");
-      router.push('/dashboard');
+      router.push("/dashboard");
     } catch (error: any) {
       console.error("Error updating workflow:", error);
-      
+
       if (error.response?.data?.message) {
-        toast.error(`Failed to update workflow: ${error.response.data.message}`);
+        toast.error(
+          `Failed to update workflow: ${error.response.data.message}`
+        );
       } else if (error.response?.data?.error) {
         toast.error(`Failed to update workflow: ${error.response.data.error}`);
       } else {
@@ -381,23 +417,26 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
   };
 
   const executeWorkflow = async () => {
-    if(!data || !data.accessToken) return;
+    if (!data || !data.accessToken) return;
     setIsExecuting(true);
-    
     try {
-      const res = await axios.post(`${BACKEND_URL}/api/v1/workflow/execute-workflow/${workflowId}`, {}, {
-        headers : {
-          Authorization : `Bearer ${data.accessToken}`
+      await axios.post(
+        `${BACKEND_URL}/api/v1/workflow/execute-workflow/${workflowId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${data.accessToken}`,
+          },
         }
-      })
-
-      toast.success("Workflow Initiated")
-    } catch (error : any) {
+      );
+      setIsExecutionPanelOpen(true);
+      setLogs([]);
+      toast.success("Workflow Initiated");
+    } catch (error: any) {
       toast.error(error.response.data.message || error.message);
       setIsExecuting(false);
     }
-
-  }
+  };
 
   const PlatformSelectModal = () => (
     <Modal isOpen={modalType === "action-select"} onClose={closeModal}>
@@ -451,6 +490,53 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
     </Modal>
   );
 
+  useEffect(() => {
+    if (!isExecuting) return;
+
+    const eventSrc = new EventSource(
+      `${BACKEND_URL}/api/v1/stream/workflow/${workflowId}`
+    );
+
+    eventSrc.onopen = () => {
+      console.log("connected with sse");
+    };
+
+    eventSrc.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log(data);
+      switch (data.type) {
+        case "COMPLETED": {
+          setIsExecuting(false);
+          toast.success("Workflow Successfully Executed ✅");
+          setLogs((prev) => [...prev, data]);
+          break;
+        }
+        case "TRIGGER_EXECUTED": {
+          setLogs((prev) => [...prev, data]);
+          break;
+        }
+        case "NODE_EXECUTED": {
+          setLogs((prev) => [...prev, data]);
+          break;
+        }
+        case "ERROR": {
+          setIsExecuting(false);
+          toast.error("Error while Executing Workflow ❌", {
+            description: data.message,
+          });
+          setLogs((prev) => [...prev, data]);
+          break;
+        }
+      }
+    };
+
+    eventSrc.onerror = (error) => {
+      toast.error("Error while Connecting With Stream:");
+    };
+
+    return () => eventSrc.close();
+  }, [workflowId, isExecuting]);
+
   if (isLoadingWorkflow) {
     return (
       <div className="h-screen bg-slate-800/50 flex items-center justify-center">
@@ -481,16 +567,20 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
 
           <div className="flex items-center space-x-4">
             <div>
-              {nodes && nodes.length > 0 && nodes.find((node) => node.data.triggerType === "MANUAL") && (
-                 <button
-                 onClick={executeWorkflow}
-                 disabled={isExecuting}
-                 className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50 transition-colors"
-               >
-                 <Save className="w-4 h-4" />
-                 <span>{isExecuting ? "Executing..." : "Execute Workflow"}</span>
-               </button>
-              )}
+              {nodes &&
+                nodes.length > 0 &&
+                nodes.find((node) => node.data.triggerType === "MANUAL") && (
+                  <button
+                    onClick={executeWorkflow}
+                    disabled={isExecuting}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50 transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>
+                      {isExecuting ? "Executing..." : "Execute Workflow"}
+                    </span>
+                  </button>
+                )}
             </div>
             <label className="flex items-center space-x-2">
               <input
@@ -568,7 +658,8 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
 
           <div className="mt-8 p-3 bg-primary/10 rounded-lg border border-primary/20">
             <p className="text-sm text-primary">
-              💡 <strong>Tip:</strong> Double-click on any node to configure it. Right-click to delete.
+              💡 <strong>Tip:</strong> Double-click on any node to configure it.
+              Right-click to delete.
             </p>
           </div>
         </div>
@@ -583,7 +674,9 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
             onNodeDoubleClick={onNodeDoubleClick}
             onNodeContextMenu={(event, node) => {
               event.preventDefault();
-              if (window.confirm('Are you sure you want to delete this node?')) {
+              if (
+                window.confirm("Are you sure you want to delete this node?")
+              ) {
                 deleteNode(node.id);
               }
             }}
@@ -635,6 +728,14 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
       />
 
       <PlatformSelectModal />
+
+      <ExecutionPanel
+        isOpen={isExecutionPanelOpen}
+        onClose={() => setIsExecutionPanelOpen(false)}
+        isExecuting={isExecuting}
+        logs={logs}
+        workflowTitle="My Automation Workflow"
+      />
     </div>
   );
 };
