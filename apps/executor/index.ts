@@ -45,10 +45,34 @@ const runWorkerFlow = async (workflowId: string, userId: string) => {
       results[node.id] = output;
       executed.add(node.id);
 
+      if (!output.success) {
+        await publisher.publish(
+          `workflow:${workflowId}`,
+          JSON.stringify({
+            type: "ERROR",
+            message: output.result,
+            nodeId: node.id,
+          })
+        );
+        break;
+      }
+
+      await publisher.publish(
+        `workflow:${workflowId}`,
+        JSON.stringify({
+          type:
+            node.type === "TRIGGER"
+              ? "TRIGGER_EXECUTED"
+              : "NODE_EXECUTED",
+          message: output.result,
+          nodeId: node.id,
+        })
+      );
+
       const outgoing = connections.filter((c) => c.sourceId === node.id);
       for (const conn of outgoing) {
         const targetParents = connections
-          .filter((c) => c.targetId === conn.sourceId)
+          .filter((c) => c.targetId === conn.targetId)
           .map((node) => node.sourceId);
 
         if (targetParents.every((pid) => executed.has(pid))) {
@@ -64,14 +88,19 @@ const runWorkerFlow = async (workflowId: string, userId: string) => {
   }
 };
 
+const publisher = redisclient.duplicate();
+
 async function executeNode(
   node: any,
   results: Record<string, NodeResult>,
   userId: string
-): Promise<any> {
+): Promise<{
+  success: boolean;
+  result: any;
+}> {
   switch (node.type) {
     case "TRIGGER":
-      return { triggered: true };
+      return { success: true, result: "triggered" };
 
     case "ACTION": {
       switch (node.actionPlatform) {
@@ -88,8 +117,13 @@ async function executeNode(
 
     default:
       console.warn(`Unknown node type: ${node.type}`);
-      return {};
+      return { success: false, result: null };
   }
+
+  return {
+    success: false,
+    result: null,
+  };
 }
 
 const worker = new Worker(
@@ -102,10 +136,16 @@ const worker = new Worker(
   { connection: redisclient, concurrency: 50 }
 );
 
-worker.on("completed", (job) => {
+worker.on("completed", async (job) => {
   console.log("Workflow completed:", job.id);
+  await publisher.publish(
+    `workflow:${job.data.workflowId}`,
+    JSON.stringify({
+      type: "COMPLETED",
+    })
+  );
 });
 
-worker.on("error", (error) => {
+worker.on("error", async (error) => {
   console.error("Worker error:", error.message);
 });
