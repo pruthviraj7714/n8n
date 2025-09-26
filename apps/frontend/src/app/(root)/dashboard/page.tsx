@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import WorkflowCard from "@/components/workflow-card";
 import CredentialsTab from "@/components/tabs/CredentialsTab";
+import ExecutionsTab from "@/components/ExecutionsTab";
 
 interface INode {
   id: string;
@@ -275,9 +276,7 @@ const Dashboard = () => {
         ) : activeTab === "CREDENTIALS" ? (
           <CredentialsTab />
         ) : activeTab === "EXECUTIONS" ? (
-          <div>
-            coming soon
-          </div>
+            <ExecutionsTab />
         ) : (
           <div>
             Invalid Tab Selectedj
