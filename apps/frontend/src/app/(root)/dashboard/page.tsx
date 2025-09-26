@@ -279,7 +279,7 @@ const Dashboard = () => {
             <ExecutionsTab />
         ) : (
           <div>
-            Invalid Tab Selectedj
+            Invalid Tab Selected
           </div>
         )}
       </div>

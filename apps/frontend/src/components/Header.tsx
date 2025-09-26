@@ -49,7 +49,7 @@ export function DashboardHeader() {
         <div className="mr-4 hidden md:flex">
           <Link href="/dashboard" className="mr-6 flex items-center space-x-2">
             <Zap className="h-6 w-6 text-primary" />
-            <span className="hidden font-bold sm:inline-block">n8n</span>
+            <span className="hidden font-bold sm:inline-block">Zaplane</span>
           </Link>
         </div>
 
@@ -86,19 +86,6 @@ export function DashboardHeader() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/profile" className="flex items-center">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings" className="flex items-center">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-red-600 focus:text-red-600 focus:bg-red-500/10 cursor-pointer"
                 onClick={async () => {
@@ -121,7 +108,7 @@ function MobileNav() {
     <div className="flex flex-col space-y-3">
       <Link href="/dashboard" className="flex items-center space-x-2">
         <Zap className="h-6 w-6 text-primary" />
-        <span className="font-bold">n8n</span>
+        <span className="font-bold">Zaplane</span>
       </Link>
 
       <Button asChild className="w-full justify-start">

@@ -11,7 +11,7 @@ export function Footer() {
               <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
                 <Zap className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold text-foreground">n8n MVP</span>
+              <span className="font-bold text-foreground">Zaplane</span>
             </Link>
             <p className="text-sm text-muted-foreground">
               Powerful automation platform with Telegram, Email, and AI Agents integration.
@@ -91,7 +91,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-border mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-sm text-muted-foreground">© {new Date().getUTCFullYear()} n8n MVP. All rights reserved.</p>
+          <p className="text-sm text-muted-foreground">© {new Date().getUTCFullYear()} Zaplane. All rights reserved.</p>
           <p className="text-sm text-muted-foreground mt-2 md:mt-0">Built with ❤️ for automation enthusiasts</p>
         </div>
       </div>

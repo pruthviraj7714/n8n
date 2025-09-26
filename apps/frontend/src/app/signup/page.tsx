@@ -57,7 +57,7 @@ export default function SignUpPage() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <Zap className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">n8n MVP</span>
+            <span className="text-xl font-bold text-foreground">Zaplane</span>
           </Link>
           <h1 className="text-2xl font-bold text-foreground mb-2">
             Create your account
@@ -71,7 +71,7 @@ export default function SignUpPage() {
           <CardHeader>
             <CardTitle className="text-card-foreground">Sign Up</CardTitle>
             <CardDescription>
-              Enter your details to create your n8n account
+              Enter your details to create your Zaplane account
             </CardDescription>
           </CardHeader>
           <CardContent>

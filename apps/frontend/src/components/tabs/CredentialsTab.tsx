@@ -140,7 +140,9 @@ const CredentialsTab = () => {
     try {
       const res = await axios.put(
         `${BACKEND_URL}/api/v1/credentials/${editingCredential.id}`,
-          credentialData.data,
+        {
+          data : credentialData.data,
+        },
         {
           headers: {
             Authorization: `Bearer ${data?.accessToken}`,
