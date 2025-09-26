@@ -20,19 +20,20 @@ model User {
   username    String        @unique
   password    String
   workflows   Workflow[]
+  executions    WorkflowExecution[]
   credentials Credentials[]
 }
 
 model Workflow {
-  id                String               @id @default(uuid())
-  title             String
-  enabled           Boolean
-  userId            String
-  nodes             Node[]
-  workflowExecutions WorkflowExecutions[]
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  connections       Connection[]
+  id                 String              @id @default(uuid())
+  title              String
+  enabled            Boolean
+  userId             String
+  nodes              Node[]
+  workflowExecutions WorkflowExecution[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  connections        Connection[]
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   webhook Webhook?
@@ -75,12 +76,28 @@ model Webhook {
   workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 }
 
-model WorkflowExecutions {
+model WorkflowNodeExecution {
+  id          String                  @id @default(uuid())
+  status      WorkflowExecutionStatus
+  nodeId      String
+  result      Json?
+  error       String?
+  startedAt   DateTime                @default(now())
+  finishedAt  DateTime?
+  executionId String
+
+  execution WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+}
+
+model WorkflowExecution {
   id         String                  @id @default(uuid())
   status     WorkflowExecutionStatus
   startedAt  DateTime                @default(now())
   finishedAt DateTime?
-
+  nodes      WorkflowNodeExecution[]
+  
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   workflowId String
   workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 }
@@ -124,5 +141,4 @@ enum WorkflowExecutionStatus {
   RUNNING
   SUCCESS
   FAILED
-  CANCELLED
 }
