@@ -83,7 +83,7 @@ credentialRouter.put("/:credentialId", authMiddleware, async (req, res) => {
       });
       return;
     }
-    
+
     const {data, success, error} = UpdateCredentialsSchema.safeParse(req.body);
 
     if (!success) {
