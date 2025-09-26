@@ -32,24 +32,55 @@ export const sendTelegramMessage = async (
     if (!creds) {
       return {
         success: false,
-        message: "Credentials Not Found!",
+        message: "Telegram credentials not found. Please connect your account.",
       };
     }
 
     const { accessToken }: any = creds.data;
 
-    await axios.get(
-      `https://api.telegram.org/bot${accessToken}/sendMessage?chat_id=${node.data.chatId}&text=${node.data.message}`
+    const response = await axios.get(
+      `https://api.telegram.org/bot${accessToken}/sendMessage`,
+      {
+        params: {
+          chat_id: node.data.chatId,
+          text: node.data.message,
+        },
+      }
     );
+
+    if (!response.data.ok) {
+      return {
+        success: false,
+        message: response.data.description || "Unknown error from Telegram API",
+      };
+    }
 
     return {
       success: true,
-      message: "Message Successfully Sent on Telegram",
+      message: "Message successfully sent on Telegram",
     };
   } catch (error: any) {
-    return {
-      success: false,
-      message: error.message,
-    };
+    if (error.response) {
+      if (error.response.data?.description) {
+        return {
+          success: false,
+          message: `Telegram API Error: ${error.response.data.description}`,
+        };
+      }
+      return {
+        success: false,
+        message: `Telegram API Error: ${error.response.statusText}`,
+      };
+    } else if (error.request) {
+      return {
+        success: false,
+        message: "No response from Telegram. Please check your network or token.",
+      };
+    } else {
+      return {
+        success: false,
+        message: `Unexpected error: ${error.message}`,
+      };
+    }
   }
 };
