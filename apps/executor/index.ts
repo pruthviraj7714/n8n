@@ -30,6 +30,14 @@ const runWorkerFlow = async (workflowId: string, userId: string) => {
       return;
     }
 
+    const workflowExecution = await prisma.workflowExecution.create({
+      data : {
+        status : "RUNNING",
+        workflowId,
+        userId
+      }
+    })
+
     const results: Record<string, NodeResult> = {};
     const executed = new Set<string>();
     const queue: string[] = [triggerNode.id];
@@ -41,11 +49,38 @@ const runWorkerFlow = async (workflowId: string, userId: string) => {
 
       console.log(`Executing node: ${JSON.stringify(node)} (${node.type})`);
 
+      const nodeExecution = await prisma.workflowNodeExecution.create({
+        data : {
+          nodeId : node.id,
+          status : "RUNNING",
+          executionId : workflowExecution.id,
+        }
+      })
+
       const output = await executeNode(node, results, userId);
       results[node.id] = output;
       executed.add(node.id);
 
       if (!output.success) {
+        await prisma.workflowNodeExecution.update({
+          where : {
+            id : nodeExecution.id
+          },
+          data : {
+            error : output.result,
+            status : "FAILED",
+            finishedAt : new Date(),
+          }
+        })
+        await prisma.workflowExecution.update({
+          where : {
+            id : workflowExecution.id
+          },
+          data : {
+            status : "FAILED",
+            finishedAt : new Date()
+          }
+        })
         await publisher.publish(
           `workflow:${workflowId}`,
           JSON.stringify({
@@ -56,6 +91,17 @@ const runWorkerFlow = async (workflowId: string, userId: string) => {
         );
         break;
       }
+
+      await prisma.workflowNodeExecution.update({
+        where : {
+          id : nodeExecution.id
+        },
+        data : {
+          result : output.result,
+          status : "SUCCESS",
+          finishedAt : new Date(),
+        }
+      })
 
       await publisher.publish(
         `workflow:${workflowId}`,
@@ -80,6 +126,16 @@ const runWorkerFlow = async (workflowId: string, userId: string) => {
         }
       }
     }
+
+    await prisma.workflowExecution.update({
+      where : {
+        id : workflowExecution.id
+      },
+      data : {
+        status : "SUCCESS",
+        finishedAt : new Date()
+      }
+    })
 
     console.log("Workflow execution finished", results);
     return results;
