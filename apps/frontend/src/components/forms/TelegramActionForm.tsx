@@ -1,5 +1,5 @@
 import { MessageSquare, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "../Modal";
 
 interface ITelegramActionFormProps {
@@ -15,12 +15,29 @@ const TelegramActionForm = ({
   actionData,
   onSave,
 }: ITelegramActionFormProps) => {
+  console.log("actionData received:", actionData);
+  
   const [formData, setFormData] = useState({
-    chatId: actionData?.action?.chatId || "",
-    message: actionData?.action?.message || "",
-    parseMode: actionData?.action?.parseMode || "HTML",
-    ...actionData?.action,
+    chatId: "",
+    message: "",
+    parseMode: "HTML",
   });
+
+  useEffect(() => {
+    if (isOpen && actionData) {
+      setFormData({
+        chatId: actionData?.chatId || "",
+        message: actionData?.message || "",
+        parseMode: actionData?.parseMode || "HTML",
+      });
+    } else if (isOpen && !actionData) {
+      setFormData({
+        chatId: "",
+        message: "",
+        parseMode: "HTML",
+      });
+    }
+  }, [isOpen, actionData]);
 
   const handleSave = () => {
     const data = {
@@ -83,6 +100,23 @@ const TelegramActionForm = ({
               rows={4}
               className="w-full p-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder:text-muted-foreground resize-none"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Parse Mode
+            </label>
+            <select
+              value={formData.parseMode}
+              onChange={(e) =>
+                setFormData({ ...formData, parseMode: e.target.value })
+              }
+              className="w-full p-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-foreground"
+            >
+              <option value="HTML">HTML</option>
+              <option value="Markdown">Markdown</option>
+              <option value="">None</option>
+            </select>
           </div>
         </div>
 

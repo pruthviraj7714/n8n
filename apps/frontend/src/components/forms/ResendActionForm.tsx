@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Modal from "../Modal";
 import { Send, X } from "lucide-react";
 
@@ -16,12 +16,29 @@ const ResendActionForm = ({
   onSave,
 }: IResendActionFormProps) => {
   const [formData, setFormData] = useState({
-    to: actionData?.action?.to || "",
-    from: actionData?.action?.from || "",
-    subject: actionData?.action?.subject || "",
-    html: actionData?.action?.html || "",
-    ...actionData?.action,
+    to: actionData?.to || "",
+    from: actionData?.from || "",
+    subject: actionData?.subject || "",
+    html: actionData?.html || "",
   });
+
+  useEffect(() => {
+    if (isOpen && actionData) {
+      setFormData({
+        to: actionData?.to || "",
+        from: actionData?.from || "",
+        subject: actionData?.subject || "",
+        html: actionData?.html || "",
+      });
+    } else if (isOpen && !actionData) {
+      setFormData({
+        to: actionData?.to || "",
+        from: actionData?.from || "",
+        subject: actionData?.subject || "",
+        html: actionData?.html || "",
+      });
+    }
+  }, [isOpen, actionData]);
 
   const handleSave = () => {
     const data = {

@@ -9,11 +9,6 @@ import {
   ChevronDown,
   ChevronRight,
   Zap,
-  MessageSquare,
-  Send,
-  Calendar,
-  Webhook,
-  AlertTriangle
 } from 'lucide-react';
 
 interface ILog {

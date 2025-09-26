@@ -202,11 +202,11 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
           type: dbNode.type.toLowerCase(),
           position: dbNode.position,
           data: {
-            ...dbNode.data,
-            triggerType: dbNode.triggerType,
-            actionPlatform: dbNode.actionPlatform,
-            action: dbNode.action || {},
+            triggerType: dbNode.data.triggerType,
+            actionPlatform: dbNode.data.actionPlatform,
+            action: dbNode.data.action || {},
             label: dbNode.type === "TRIGGER" ? "Trigger Node" : "Action Node",
+            ...dbNode.data,
           },
         }));
 
@@ -232,6 +232,10 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
 
     loadWorkflow();
   }, [workflowId, data?.accessToken, setNodes, setEdges, router]);
+
+
+  console.log(nodes);
+  
 
   const onConnect = useCallback(
     (params: Connection) => {

@@ -3,7 +3,8 @@ import authMiddleware from "../middlewares/authMiddleware";
 import {
   CreateWorkflowSchema,
   UpdateWorkflowSchema,
-  NodeSchema,
+  NodeUnionSchema,
+  NewNodeSchema,
 } from "@repo/common";
 import prisma from "@repo/db";
 import crypto from "crypto";
@@ -43,7 +44,7 @@ workflowRouter.post("/", authMiddleware, async (req, res) => {
 
     let validNodes = 0;
     nodes.forEach((node) => {
-      const { success } = NodeSchema.safeParse(node);
+      const { success } = NewNodeSchema.safeParse(node);
       if (success) validNodes += 1;
     });
 
@@ -340,7 +341,7 @@ workflowRouter.patch(
 
 workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
   try {
-    const workflowId  = req.params.workflwoId as string;
+    const workflowId  = req.params.workflowId as string;
     const userId = req.userId;
 
     if (!userId) {
@@ -411,8 +412,7 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
     }
 
     const updatedWorkflow = await prisma.$transaction(async (tx) => {
-      // 1. Update workflow basic info
-      const workflow = await tx.workflow.update({
+      await tx.workflow.update({
         where: { id: workflowId },
         data: {
           title,
