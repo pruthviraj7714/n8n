@@ -626,6 +626,13 @@ workflowRouter.post(
         return;
       }
 
+      if (!isWorkFlowExists.enabled) {
+        res.status(403).json({
+          message: "This workflow is currently disabled. Please enable it to proceed."
+        });
+        return;
+      }
+
       const job = await workflowQueue.add("execute-workflow", {
         workflowId,
         userId,

@@ -23,6 +23,26 @@ webhookRouter.post("/:webhookId", async (req, res) => {
 
     const workflowId = isWebhookExists.workflowId;
 
+    const isWorkFlowExists = await prisma.workflow.findUnique({
+      where: {
+        id: workflowId,
+      },
+    });
+
+    if (!isWorkFlowExists) {
+      res.status(400).json({
+        message: "Workflow Not found!",
+      });
+      return;
+    }
+
+    if (!isWorkFlowExists.enabled) {
+      res.status(403).json({
+        message: "This workflow is currently disabled. Please enable it to proceed."
+      });
+      return;
+    }
+
     const job = await workflowQueue.add("execute-workflow", {
       workflowId,
     });
