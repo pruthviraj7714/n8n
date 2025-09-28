@@ -44,6 +44,20 @@ credentialRouter.post("/", authMiddleware, async (req, res) => {
 
     const { data: credentialsData, platform } = parsed.data;
 
+    const isCredsAlreadyAdded = await prisma.credentials.findFirst({
+      where : {
+        userId,
+        platform
+      }
+    });
+
+    if (isCredsAlreadyAdded) {
+      res.status(409).json({
+        message: "Credentials for this platform already exist. Please edit to update."
+      });
+      return;
+    }
+
     const creds = await prisma.credentials.create({
       data: {
         data: credentialsData,
@@ -57,8 +71,6 @@ credentialRouter.post("/", authMiddleware, async (req, res) => {
       credential: creds,
     });
   } catch (error) {
-    console.log(error);
-
     res.status(500).json({
       message: "Internal Server Error",
     });
