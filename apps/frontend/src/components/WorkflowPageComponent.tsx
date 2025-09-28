@@ -27,6 +27,10 @@ import {
   MessageSquare,
   X,
   Loader2,
+  Sparkles,
+  Badge,
+  Activity,
+  Layers,
 } from "lucide-react";
 import Modal from "@/components/Modal";
 import TriggerForm from "@/components/forms/TriggerForm";
@@ -234,7 +238,7 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
   }, [workflowId, data?.accessToken, setNodes, setEdges, router]);
 
 
-  console.log(nodes);
+  console.log(nodes); 
   
 
   const onConnect = useCallback(
@@ -553,194 +557,243 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
   }
 
   return (
-    <div className="h-screen bg-slate-800/50 relative">
-      <div className="bg-card/50 backdrop-blur-sm border-b border-border px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold text-foreground">
-              Edit Workflow
-            </h1>
-            <input
-              type="text"
-              placeholder="Enter workflow title..."
-              value={workflowTitle}
-              onChange={(e) => setWorkflowTitle(e.target.value)}
-              className="px-3 py-2 bg-input border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary w-64 text-foreground placeholder:text-muted-foreground"
-            />
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <div>
-              {nodes &&
-                nodes.length > 0 &&
-                nodes.find((node) => node.data.triggerType === "MANUAL") && (
-                  <button
-                    onClick={executeWorkflow}
-                    disabled={isExecuting}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50 transition-colors"
-                  >
-                    <Save className="w-4 h-4" />
-                    <span>
-                      {isExecuting ? "Executing..." : "Execute Workflow"}
-                    </span>
-                  </button>
-                )}
-            </div>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={isEnabled}
-                onChange={(e) => setIsEnabled(e.target.checked)}
-                className="rounded border-border text-primary focus:ring-primary bg-input"
-              />
-              <span className="text-sm text-foreground">Enabled</span>
-            </label>
-
-            <button
-              onClick={updateWorkflow}
-              disabled={isLoading}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50 transition-colors"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isLoading ? "Updating..." : "Update Workflow"}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="flex h-full">
-        <div className="w-64 bg-card/30 backdrop-blur-sm border-r border-border p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-4">
-            Add Nodes
-          </h3>
-
-          <div className="space-y-2">
-            <button
-              onClick={addTriggerNode}
-              className="w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/50 rounded-lg border border-border transition-colors group"
-            >
-              <div className="p-2 bg-purple-500/20 rounded-lg border border-purple-500/30 group-hover:bg-purple-500/30 transition-colors">
-                <Zap className="w-4 h-4 text-purple-400" />
-              </div>
-              <div>
-                <div className="font-medium text-sm text-foreground">
-                  Trigger
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Start workflow
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={addActionNode}
-              className="w-full flex items-center space-x-3 p-3 text-left hover:bg-muted/50 rounded-lg border border-border transition-colors group"
-            >
-              <div className="p-2 bg-blue-500/20 rounded-lg border border-blue-500/30 group-hover:bg-blue-500/30 transition-colors">
-                <Settings className="w-4 h-4 text-blue-400" />
-              </div>
-              <div>
-                <div className="font-medium text-sm text-foreground">
-                  Action
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Perform action
-                </div>
-              </div>
-            </button>
-          </div>
-
-          <div className="mt-8">
-            <h3 className="text-sm font-semibold text-foreground mb-4">
-              Workflow Info
-            </h3>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <div>Nodes: {nodes.length}</div>
-              <div>Connections: {edges.length}</div>
-              <div>Status: {isEnabled ? "Enabled" : "Disabled"}</div>
-            </div>
-          </div>
-
-          <div className="mt-8 p-3 bg-primary/10 rounded-lg border border-primary/20">
-            <p className="text-sm text-primary">
-              💡 <strong>Tip:</strong> Double-click on any node to configure it.
-              Right-click to delete.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex-1 relative" ref={reactFlowWrapper}>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeDoubleClick={onNodeDoubleClick}
-            onNodeContextMenu={(event, node) => {
-              event.preventDefault();
-              if (
-                window.confirm("Are you sure you want to delete this node?")
-              ) {
-                deleteNode(node.id);
-              }
-            }}
-            onInit={setReactFlowInstance}
-            nodeTypes={nodeTypes}
-            fitView
-            className="bg-slate-800/50"
-          >
-            <Background color="#374151" gap={20} />
-            <Controls />
-            <MiniMap
-              className="!bg-card !border !border-border"
-              maskColor="rgb(15, 23, 42, 0.6)"
-            />
-
-            <Panel
-              position="top-center"
-              className="bg-card/80 backdrop-blur-sm rounded-lg shadow-lg border border-border px-4 py-2"
-            >
-              <div className="text-sm text-muted-foreground">
-                {nodes.length === 0
-                  ? "Add nodes from the sidebar to get started"
-                  : "Double-click nodes to configure them • Right-click to delete"}
-              </div>
-            </Panel>
-          </ReactFlow>
-        </div>
-      </div>
-
-      <TriggerForm
-        isOpen={modalType === "trigger"}
-        onClose={closeModal}
-        triggerData={selectedNode?.data}
-        onSave={handleNodeSave}
-      />
-
-      <TelegramActionForm
-        isOpen={modalType === "telegram"}
-        onClose={closeModal}
-        actionData={selectedNode?.data}
-        onSave={handleNodeSave}
-      />
-
-      <ResendActionForm
-        isOpen={modalType === "resend"}
-        onClose={closeModal}
-        actionData={selectedNode?.data}
-        onSave={handleNodeSave}
-      />
-
-      <PlatformSelectModal />
-
-      <ExecutionPanel
-        isOpen={isExecutionPanelOpen}
-        onClose={() => setIsExecutionPanelOpen(false)}
-        isExecuting={isExecuting}
-        logs={logs}
-        workflowTitle="My Automation Workflow"
-      />
+    <div className="h-[130vh] bg-gradient-to-br from-background via-background to-card/50 relative overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute top-3/4 right-1/4 w-80 h-80 bg-accent/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      <div className="absolute top-1/2 left-3/4 w-64 h-64 bg-chart-2/10 rounded-full blur-2xl animate-pulse delay-500"></div>
     </div>
+
+    <div className="bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-lg border-b border-border/40 px-6 py-4 relative z-10 shadow-xl">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg shadow-primary/25">
+              <Layers className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+                Edit Workflow
+              </h1>
+              <Badge className="bg-gradient-to-r from-chart-2/20 to-primary/20 text-chart-2 border border-chart-2/30 px-2 py-0.5 text-xs">
+                <Settings className="w-3 h-3 mr-1" />
+                Live Editor
+              </Badge>
+            </div>
+          </div>
+          <input
+            type="text"
+            placeholder="Enter workflow title..."
+            value={workflowTitle}
+            onChange={(e) => setWorkflowTitle(e.target.value)}
+            className="px-4 py-3 bg-input/80 border border-border/40 rounded-xl focus:ring-2 focus:ring-accent/50 focus:border-accent/50 w-80 text-foreground placeholder:text-muted-foreground backdrop-blur-sm transition-all duration-300 text-base"
+          />
+        </div>
+
+        <div className="flex items-center space-x-4">
+          {nodes &&
+            nodes.length > 0 &&
+            nodes.find((node) => node.data.triggerType === "MANUAL") && (
+              <button
+                onClick={executeWorkflow}
+                disabled={isExecuting}
+                className="bg-gradient-to-r from-chart-3 to-chart-3/90 hover:from-chart-3/90 hover:to-chart-3/80 text-primary-foreground px-4 py-2.5 rounded-xl flex items-center space-x-2 disabled:opacity-50 transition-all duration-300 hover:scale-105 shadow-lg shadow-chart-3/20 font-medium"
+              >
+                <Play className="w-4 h-4" />
+                <span>
+                  {isExecuting ? "Executing..." : "Execute Workflow"}
+                </span>
+              </button>
+            )}
+          
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isEnabled}
+              onChange={(e) => setIsEnabled(e.target.checked)}
+              className="rounded-lg border-border/40 text-accent focus:ring-accent bg-input/80 w-4 h-4"
+            />
+            <span className="text-sm font-medium text-foreground">Enabled</span>
+          </label>
+
+          <button
+            onClick={updateWorkflow}
+            disabled={isLoading}
+            className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 text-accent-foreground px-6 py-2.5 rounded-xl flex items-center space-x-2 disabled:opacity-50 transition-all duration-300 hover:scale-105 shadow-2xl shadow-accent/30 hover:shadow-accent/50 font-semibold"
+          >
+            <Save className="w-4 h-4" />
+            <span>{isLoading ? "Updating..." : "Update Workflow"}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex h-full relative z-10">
+      <div className="w-80 bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-lg border-r border-border/40 p-6 shadow-2xl">
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">Add Nodes</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Enhance your workflow with additional nodes
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <button
+            onClick={addTriggerNode}
+            className="w-full flex items-center space-x-4 p-4 text-left hover:bg-card/50 rounded-xl border border-border/40 transition-all duration-300 group hover:scale-105 hover:border-primary/40 backdrop-blur-sm"
+          >
+            <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/30 rounded-xl border border-primary/30 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-primary/10">
+              <Zap className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <div className="font-semibold text-base text-foreground">
+                Trigger
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Start your workflow automation
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={addActionNode}
+            className="w-full flex items-center space-x-4 p-4 text-left hover:bg-card/50 rounded-xl border border-border/40 transition-all duration-300 group hover:scale-105 hover:border-accent/40 backdrop-blur-sm"
+          >
+            <div className="p-3 bg-gradient-to-br from-accent/20 to-accent/30 rounded-xl border border-accent/30 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-accent/10">
+              <Settings className="w-5 h-5 text-accent" />
+            </div>
+            <div>
+              <div className="font-semibold text-base text-foreground">
+                Action
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Perform automated actions
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <div className="mt-12">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Workflow Stats
+          </h3>
+          <div className="bg-gradient-to-br from-muted/10 to-muted/5 rounded-xl p-4 border border-border/30 backdrop-blur-sm">
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Nodes:</span>
+                <span className="font-medium text-foreground">{nodes.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Connections:</span>
+                <span className="font-medium text-foreground">{edges.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status:</span>
+                <Badge className={`text-xs ${isEnabled ? 'bg-chart-3/20 text-chart-3 border-chart-3/30' : 'bg-muted/20 text-muted-foreground border-muted/30'}`}>
+                  {isEnabled ? "Enabled" : "Disabled"}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 p-4 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl border border-primary/20 backdrop-blur-sm">
+          <div className="flex items-start gap-3">
+            <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-primary mb-1">
+                Editor Tips
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Double-click nodes to configure • Right-click to delete • Drag to connect nodes
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 relative" ref={reactFlowWrapper}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeDoubleClick={onNodeDoubleClick}
+          onNodeContextMenu={(event, node) => {
+            event.preventDefault();
+            if (
+              window.confirm("Are you sure you want to delete this node?")
+            ) {
+              deleteNode(node.id);
+            }
+          }}
+          onInit={setReactFlowInstance}
+          nodeTypes={nodeTypes}
+          fitView
+          className="bg-gradient-to-br from-background/50 to-card/20"
+        >
+          <Background 
+            color="oklch(1 0 0 / 8%)" 
+            gap={24} 
+            size={1}
+          />
+          <Controls className="!bg-card/90 !border !border-border/40 !backdrop-blur-lg" />
+          <MiniMap
+            className="!bg-card/90 !border !border-border/40 !backdrop-blur-lg !rounded-xl"
+            maskColor="oklch(0.14 0 0 / 0.8)"
+            nodeColor="oklch(0.65 0.22 264)"
+          />
+
+          <Panel
+            position="top-center"
+            className="bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-lg rounded-xl shadow-2xl border border-border/40 px-6 py-3 mx-4"
+          >
+            <div className="text-sm text-muted-foreground font-medium">
+              {nodes.length === 0
+                ? "Add nodes from the sidebar to enhance your workflow"
+                : "Double-click nodes to configure • Right-click to delete"}
+            </div>
+          </Panel>
+        </ReactFlow>
+      </div>
+    </div>
+
+    <TriggerForm
+      isOpen={modalType === "trigger"}
+      onClose={closeModal}
+      triggerData={selectedNode?.data}
+      onSave={handleNodeSave}
+    />
+
+    <TelegramActionForm
+      isOpen={modalType === "telegram"}
+      onClose={closeModal}
+      actionData={selectedNode?.data}
+      onSave={handleNodeSave}
+    />
+
+    <ResendActionForm
+      isOpen={modalType === "resend"}
+      onClose={closeModal}
+      actionData={selectedNode?.data}
+      onSave={handleNodeSave}
+    />
+
+    <PlatformSelectModal />
+
+    <ExecutionPanel
+      isOpen={isExecutionPanelOpen}
+      onClose={() => setIsExecutionPanelOpen(false)}
+      isExecuting={isExecuting}
+      logs={logs}
+      workflowTitle="My Automation Workflow"
+    />
+  </div>
   );
 };
 

@@ -44,7 +44,6 @@
 :root {
   --radius: 0.625rem;
 
-  /* Dark mode only */
   --background: oklch(0.14 0 0);       /* almost black */
   --foreground: oklch(0.96 0 0);       /* off-white */
 

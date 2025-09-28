@@ -5,11 +5,17 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Switch } from "./ui/switch";
-import { Badge } from "./ui/badge";
-import { Eye, MoreHorizontal, Settings, Trash2 } from "lucide-react";
-import { Button } from "./ui/button";
-import { useRouter } from "next/navigation";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import {
+  Eye,
+  MoreHorizontal,
+  Trash2,
+  Zap,
+  Activity,
+  Clock,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface INode {
   id: string;
@@ -38,18 +44,20 @@ interface IWorkflow {
   nodes: INode[];
   updatedAt?: string;
   createdAt?: string;
+  status?: string;
 }
 
 const WorkflowCard = ({
   workflow,
   onToggleWorkflow,
   onDeleteWorkflow,
+  onView,
 }: {
   workflow: IWorkflow;
   onToggleWorkflow: (id: string, enabled: boolean) => void;
   onDeleteWorkflow: (id: string) => void;
+  onView: (id: string) => void;
 }) => {
-  const router = useRouter();
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -65,76 +73,112 @@ const WorkflowCard = ({
   };
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-800/80 hover:border-slate-600/50 transition-all duration-200 group">
-      <div className="flex items-start justify-between mb-4">
-        <div
-          onClick={() => router.push(`/workflows/${workflow.id}`)}
-          className="flex-1 min-w-0 cursor-pointer"
-        >
-          <h3 className="text-white font-semibold text-lg truncate group-hover:text-orange-400 transition-colors">
-            {workflow.title}
-          </h3>
-          <div className="flex items-center gap-3 mt-2">
-            <Badge
-              variant={workflow.enabled ? "default" : "secondary"}
-              className={
+    <div className="bg-gradient-to-br from-card/80 to-card/40 border border-border/30 backdrop-blur-sm rounded-2xl p-6 hover:shadow-accent/20 hover:border-accent/50 transition-all duration-300 hover:scale-105 group relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-6">
+          <div
+            onClick={() => onView(workflow.id)}
+            className="flex-1 min-w-0 cursor-pointer space-y-3"
+          >
+            <div
+              className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${
                 workflow.enabled
-                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30"
-                  : "bg-slate-600/50 text-slate-400 border-slate-600/50"
-              }
+                  ? "bg-gradient-to-br from-accent/20 to-primary/20 border border-accent/30 group-hover:from-accent/30 group-hover:to-primary/30 group-hover:scale-110"
+                  : "bg-muted/20 border border-border/30 group-hover:bg-muted/30"
+              }`}
             >
-              {workflow.enabled ? "Active" : "Inactive"}
-            </Badge>
-            <span className="text-slate-400 text-sm">
-              {workflow.nodes?.length || 0} nodes
-            </span>
+              <Zap
+                className={`w-6 h-6 transition-all duration-300 ${
+                  workflow.enabled
+                    ? "text-accent animate-pulse"
+                    : "text-muted-foreground"
+                }`}
+              />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-foreground group-hover:text-accent transition-colors duration-300 truncate mb-3">
+                {workflow.title}
+              </h3>
+              <div className="flex items-center gap-3">
+                <Badge
+                  className={`font-semibold transition-all duration-300 ${
+                    workflow.enabled
+                      ? "bg-gradient-to-r from-accent/20 to-primary/20 text-accent border border-accent/30"
+                      : "bg-muted/20 text-muted-foreground border border-border/30"
+                  }`}
+                >
+                  <div
+                    className={`w-2 h-2 rounded-full mr-2 ${
+                      workflow.enabled
+                        ? "bg-accent animate-pulse"
+                        : "bg-muted-foreground"
+                    }`}
+                  ></div>
+                  {workflow.enabled ? "Active" : "Inactive"}
+                </Badge>
+                <span className="text-muted-foreground text-sm flex items-center">
+                  <Activity className="w-3 h-3 mr-1" />
+                  {workflow.nodes?.length || 0} nodes
+                </span>
+              </div>
+            </div>
           </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground hover:bg-card/60 opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-xl p-2"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-card/95 backdrop-blur-lg border-border/30 shadow-2xl shadow-primary/10 rounded-xl">
+              <DropdownMenuItem
+                onClick={() => onView(workflow.id)}
+                className="text-foreground hover:bg-primary/10 focus:bg-primary/10 rounded-lg mx-2 my-1 transition-all duration-200 cursor-pointer"
+              >
+                <Eye className="w-4 h-4 mr-3 text-primary" />
+                View
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-border/30 mx-2" />
+              <DropdownMenuItem
+                onClick={() => onDeleteWorkflow(workflow.id)}
+                className="text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-lg mx-2 my-1 transition-all duration-200 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4 mr-3" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-slate-400 hover:text-white hover:bg-slate-700/50 opacity-0 group-hover:opacity-100 transition-all"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-slate-800 border-slate-700 shadow-xl">
-            <DropdownMenuItem
-              onClick={() => router.push(`/workflows/${workflow.id}`)}
-              className="text-slate-200 hover:bg-slate-700 focus:bg-slate-700"
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              View
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-slate-200 hover:bg-slate-700 focus:bg-slate-700">
-              <Settings className="w-4 h-4 mr-2" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-slate-700" />
-            <DropdownMenuItem
-              onClick={() => onDeleteWorkflow(workflow.id)}
-              className="text-red-400 hover:bg-red-500/20 focus:bg-red-500/20"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+
+        <div className="flex items-center justify-between">
+          <div className="text-muted-foreground text-sm space-y-1">
+            <div className="flex items-center">
+              <Clock className="w-3 h-3 mr-2" />
+              Updated {formatDate(workflow.updatedAt)}
+            </div>
+            <div className="flex items-center">
+              <Clock className="w-3 h-3 mr-2" />
+              Created {formatDate(workflow.createdAt)}
+            </div>
+          </div>
+          <Switch
+            checked={workflow.enabled}
+            onCheckedChange={(enabled) =>
+              onToggleWorkflow(workflow.id, enabled)
+            }
+            className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent data-[state=checked]:to-primary data-[state=unchecked]:bg-muted/50 transition-all duration-300"
+          />
+        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="text-slate-400 text-sm space-y-1">
-          <div>Updated {formatDate(workflow.updatedAt)}</div>
-          <div>Created {formatDate(workflow.createdAt)}</div>
-        </div>
-        <Switch
-          checked={workflow.enabled}
-          onCheckedChange={(enabled) => onToggleWorkflow(workflow.id, enabled)}
-          className="data-[state=checked]:bg-orange-500 data-[state=unchecked]:bg-slate-600"
-        />
-      </div>
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-accent via-primary to-chart-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
     </div>
   );
 };
