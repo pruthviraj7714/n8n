@@ -45,7 +45,6 @@ import {
   Mail,
   MessageSquare,
   Shield,
-  Sparkles,
   Database,
   Lock,
 } from "lucide-react";
