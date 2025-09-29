@@ -181,6 +181,7 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [isExecutionPanelOpen, setIsExecutionPanelOpen] = useState(false);
   const [logs, setLogs] = useState<ILog[]>([]);
+  const [webhookData, setWebhookData] = useState(null);
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const { data } = useSession();
@@ -209,6 +210,8 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
         setWebhookUrl(
           workflowData.webhook ? workflowData?.webhook?.path : null
         );
+
+        setWebhookData(workflowData.webhook || null);
 
         const reactFlowNodes = workflowData.nodes.map((dbNode: any) => ({
           id: dbNode.id,
@@ -578,88 +581,90 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
       </div>
 
       <div className="bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-lg border-b border-border/40 px-6 py-4 relative z-10 shadow-xl">
-  <div className="flex items-center justify-between gap-4">
-    <div className="flex items-center space-x-6 flex-1 min-w-0">
-      <div className="flex items-center gap-3 flex-shrink-0">
-        <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg shadow-primary/25">
-          <Layers className="w-5 h-5 text-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent whitespace-nowrap">
-            Edit Workflow
-          </h1>
-          <Badge className="bg-gradient-to-r from-chart-2/20 to-primary/20 text-chart-2 border border-chart-2/30 px-2 py-0.5 text-xs">
-            <Settings className="w-3 h-3 mr-1" />
-            Live Editor
-          </Badge>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center space-x-6 flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg shadow-primary/25">
+                <Layers className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent whitespace-nowrap">
+                  Edit Workflow
+                </h1>
+                <Badge className="bg-gradient-to-r from-chart-2/20 to-primary/20 text-chart-2 border border-chart-2/30 px-2 py-0.5 text-xs">
+                  <Settings className="w-3 h-3 mr-1" />
+                  Live Editor
+                </Badge>
+              </div>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Enter workflow title..."
+              value={workflowTitle}
+              onChange={(e) => setWorkflowTitle(e.target.value)}
+              className="px-4 py-3 bg-input/80 border border-border/40 rounded-xl focus:ring-2 focus:ring-accent/50 focus:border-accent/50 w-full max-w-80 text-foreground placeholder:text-muted-foreground backdrop-blur-sm transition-all duration-300 text-base"
+            />
+          </div>
+
+          <div className="flex items-center space-x-4 flex-shrink-0">
+            {nodes &&
+            nodes.length > 0 &&
+            nodes.find((node) => node.data.triggerType === "MANUAL") ? (
+              <button
+                onClick={executeWorkflow}
+                disabled={isExecuting}
+                className="bg-gradient-to-r from-chart-3 to-chart-3/90 hover:from-chart-3/90 hover:to-chart-3/80 text-primary-foreground px-4 py-2.5 rounded-xl flex items-center space-x-2 disabled:opacity-50 transition-all duration-300 hover:scale-105 shadow-lg shadow-chart-3/20 font-medium whitespace-nowrap"
+              >
+                <Play className="w-4 h-4" />
+                <span>{isExecuting ? "Executing..." : "Execute Workflow"}</span>
+              </button>
+            ) : webhookUrl ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={webhookUrl}
+                  className="w-64 bg-background text-primary-foreground px-4 py-3 rounded-xl font-medium shadow-lg shadow-chart-3/30 transition-all duration-300 hover:scale-[1.02] focus:outline-none cursor-text"
+                />
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={handleCopy}
+                  className="rounded-xl shadow-md transition-all duration-300 hover:scale-110 flex-shrink-0"
+                >
+                  <Copy className="h-5 w-5" />
+                </Button>
+                {copied && (
+                  <span className="text-sm text-green-500 font-medium animate-pulse whitespace-nowrap">
+                    Copied!
+                  </span>
+                )}
+              </div>
+            ) : null}
+
+            <label className="flex items-center space-x-3 cursor-pointer flex-shrink-0">
+              <input
+                type="checkbox"
+                checked={isEnabled}
+                onChange={(e) => setIsEnabled(e.target.checked)}
+                className="rounded-lg border-border/40 text-accent focus:ring-accent bg-input/80 w-4 h-4"
+              />
+              <span className="text-sm font-medium text-foreground whitespace-nowrap">
+                Enabled
+              </span>
+            </label>
+
+            <button
+              onClick={updateWorkflow}
+              disabled={isLoading}
+              className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 text-accent-foreground px-6 py-2.5 rounded-xl flex items-center space-x-2 disabled:opacity-50 transition-all duration-300 hover:scale-105 shadow-2xl shadow-accent/30 hover:shadow-accent/50 font-semibold whitespace-nowrap"
+            >
+              <Save className="w-4 h-4" />
+              <span>{isLoading ? "Updating..." : "Update Workflow"}</span>
+            </button>
+          </div>
         </div>
       </div>
-      
-      <input
-        type="text"
-        placeholder="Enter workflow title..."
-        value={workflowTitle}
-        onChange={(e) => setWorkflowTitle(e.target.value)}
-        className="px-4 py-3 bg-input/80 border border-border/40 rounded-xl focus:ring-2 focus:ring-accent/50 focus:border-accent/50 w-full max-w-80 text-foreground placeholder:text-muted-foreground backdrop-blur-sm transition-all duration-300 text-base"
-      />
-    </div>
-
-    <div className="flex items-center space-x-4 flex-shrink-0">
-      {nodes && nodes.length > 0 && nodes.find((node) => node.data.triggerType === "MANUAL") ? (
-        <button
-          onClick={executeWorkflow}
-          disabled={isExecuting}
-          className="bg-gradient-to-r from-chart-3 to-chart-3/90 hover:from-chart-3/90 hover:to-chart-3/80 text-primary-foreground px-4 py-2.5 rounded-xl flex items-center space-x-2 disabled:opacity-50 transition-all duration-300 hover:scale-105 shadow-lg shadow-chart-3/20 font-medium whitespace-nowrap"
-        >
-          <Play className="w-4 h-4" />
-          <span>{isExecuting ? "Executing..." : "Execute Workflow"}</span>
-        </button>
-      ) : webhookUrl ? (
-        <div className="flex items-center gap-2">
-          <Input
-            readOnly
-            value={webhookUrl}
-            className="w-64 bg-background text-primary-foreground px-4 py-3 rounded-xl font-medium shadow-lg shadow-chart-3/30 transition-all duration-300 hover:scale-[1.02] focus:outline-none cursor-text"
-          />
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={handleCopy}
-            className="rounded-xl shadow-md transition-all duration-300 hover:scale-110 flex-shrink-0"
-          >
-            <Copy className="h-5 w-5" />
-          </Button>
-          {copied && (
-            <span className="text-sm text-green-500 font-medium animate-pulse whitespace-nowrap">
-              Copied!
-            </span>
-          )}
-        </div>
-      ) : null}
-
-      <label className="flex items-center space-x-3 cursor-pointer flex-shrink-0">
-        <input
-          type="checkbox"
-          checked={isEnabled}
-          onChange={(e) => setIsEnabled(e.target.checked)}
-          className="rounded-lg border-border/40 text-accent focus:ring-accent bg-input/80 w-4 h-4"
-        />
-        <span className="text-sm font-medium text-foreground whitespace-nowrap">
-          Enabled
-        </span>
-      </label>
-
-      <button
-        onClick={updateWorkflow}
-        disabled={isLoading}
-        className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 text-accent-foreground px-6 py-2.5 rounded-xl flex items-center space-x-2 disabled:opacity-50 transition-all duration-300 hover:scale-105 shadow-2xl shadow-accent/30 hover:shadow-accent/50 font-semibold whitespace-nowrap"
-      >
-        <Save className="w-4 h-4" />
-        <span>{isLoading ? "Updating..." : "Update Workflow"}</span>
-      </button>
-    </div>
-  </div>
-</div>
 
       <div className="flex h-full relative z-10">
         <div className="w-80 bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-lg border-r border-border/40 p-6 shadow-2xl">
@@ -805,6 +810,7 @@ const EditWorkflowPage = ({ workflowId }: EditWorkflowPageProps) => {
         isOpen={modalType === "trigger"}
         onClose={closeModal}
         triggerData={selectedNode?.data}
+        webhookData={webhookData}
         onSave={handleNodeSave}
       />
 

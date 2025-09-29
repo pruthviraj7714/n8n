@@ -15,8 +15,6 @@ const TelegramActionForm = ({
   actionData,
   onSave,
 }: ITelegramActionFormProps) => {
-  console.log("actionData received:", actionData);
-  
   const [formData, setFormData] = useState({
     chatId: "",
     message: "",
