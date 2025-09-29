@@ -211,7 +211,7 @@ const CreateWorkflowPage = () => {
     const newNode: Node = {
       id: `action-${Date.now()}`,
       type: "action",
-      position: { x: 250, y: 250 },
+      position: { x: 175, y: 175 },
       data: {
         actionPlatform: null,
         label: "Action Node",

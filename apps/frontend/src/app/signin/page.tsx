@@ -1,7 +1,5 @@
 "use client";
 
-import type React from "react";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -106,7 +104,7 @@ export default function SignInPage() {
 
         <Card className="bg-gradient-to-br from-card/90 to-card/60 border border-border/40 backdrop-blur-lg shadow-2xl shadow-primary/10 hover:shadow-accent/20 transition-all duration-500 hover:scale-[1.02]">
           <CardHeader className="pb-6">
-            <CardTitle className="text-2xl text-card-foreground bg-gradient-to-r from-card-foreground to-muted-foreground bg-clip-text text-transparent">
+            <CardTitle className="text-2xl bg-gradient-to-r from-card-foreground to-muted-foreground bg-clip-text text-transparent">
               Sign In
             </CardTitle>
             <CardDescription className="text-lg text-muted-foreground leading-relaxed">

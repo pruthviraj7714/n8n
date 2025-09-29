@@ -116,7 +116,6 @@ const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
 
   return (
     <div className="fixed inset-y-0 right-0 w-96 bg-gradient-to-br from-card/95 to-card/85 backdrop-blur-xl border-l border-border/40 shadow-2xl z-50 flex flex-col">
-      {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-border/40 bg-gradient-to-r from-background/20 to-card/20 backdrop-blur-sm">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg shadow-primary/25">
@@ -143,7 +142,6 @@ const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
         </button>
       </div>
 
-      {/* Status Section */}
       <div className="p-6 border-b border-border/40 bg-gradient-to-br from-muted/5 to-background/5 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
@@ -178,7 +176,6 @@ const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
         )}
       </div>
 
-      {/* Logs Section */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {logs.length === 0 ? (
           <div className="text-center py-12">
@@ -255,7 +252,6 @@ const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
         )}
       </div>
 
-      {/* Footer */}
       <div className="p-6 border-t border-border/40 bg-gradient-to-r from-background/20 to-card/20 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

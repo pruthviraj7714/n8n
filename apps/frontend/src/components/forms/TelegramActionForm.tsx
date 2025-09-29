@@ -20,7 +20,6 @@ const TelegramActionForm = ({
   const [formData, setFormData] = useState({
     chatId: "",
     message: "",
-    parseMode: "HTML",
   });
 
   useEffect(() => {
@@ -28,13 +27,11 @@ const TelegramActionForm = ({
       setFormData({
         chatId: actionData?.chatId || "",
         message: actionData?.message || "",
-        parseMode: actionData?.parseMode || "HTML",
       });
     } else if (isOpen && !actionData) {
       setFormData({
         chatId: "",
         message: "",
-        parseMode: "HTML",
       });
     }
   }, [isOpen, actionData]);
@@ -44,7 +41,6 @@ const TelegramActionForm = ({
       actionPlatform: "TELEGRAM",
       chatId: formData.chatId,
       message: formData.message,
-      parseMode: formData.parseMode,
     };
     onSave(data);
     onClose();
@@ -100,23 +96,6 @@ const TelegramActionForm = ({
               rows={4}
               className="w-full p-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder:text-muted-foreground resize-none"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Parse Mode
-            </label>
-            <select
-              value={formData.parseMode}
-              onChange={(e) =>
-                setFormData({ ...formData, parseMode: e.target.value })
-              }
-              className="w-full p-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-foreground"
-            >
-              <option value="HTML">HTML</option>
-              <option value="Markdown">Markdown</option>
-              <option value="">None</option>
-            </select>
           </div>
         </div>
 
