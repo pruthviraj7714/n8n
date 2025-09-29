@@ -45,6 +45,7 @@ webhookRouter.post("/:webhookId", async (req, res) => {
 
     const job = await workflowQueue.add("execute-workflow", {
       workflowId,
+      userId : isWorkFlowExists.userId
     });
 
     res.status(200).json({

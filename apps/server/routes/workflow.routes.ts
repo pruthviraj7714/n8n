@@ -14,9 +14,9 @@ import { Prisma } from "@repo/db/generated/prisma/client";
 
 const workflowRouter = Router();
 
-const createRandomPathForWebhook = (): string => {
+const createRandomPathForWebhook = (): { url: string; id: string } => {
   const randomId = crypto.randomUUID();
-  return `${WEBHOOK_BASE_PATH}/${randomId}`;
+  return { url: `${WEBHOOK_BASE_PATH}/${randomId}`, id: randomId };
 };
 
 workflowRouter.post("/", authMiddleware, async (req, res) => {
@@ -91,7 +91,7 @@ workflowRouter.post("/", authMiddleware, async (req, res) => {
         },
       });
 
-      const nodeIdMapping : Record<string, string> = {};
+      const nodeIdMapping: Record<string, string> = {};
       const createdNodes = [];
 
       const createdTriggerNode = await tx.node.create({
@@ -108,11 +108,12 @@ workflowRouter.post("/", authMiddleware, async (req, res) => {
       createdNodes.push(createdTriggerNode);
 
       if (isTriggerNodeWithWebhook) {
-        const path = createRandomPathForWebhook();
+        const { url, id } = createRandomPathForWebhook();
 
-        const webhook = await tx.webhook.create({
+        await tx.webhook.create({
           data: {
-            path,
+            id,
+            path: url,
             nodeId: createdTriggerNode.id,
             workflowId: workflow.id,
           },
@@ -263,7 +264,7 @@ workflowRouter.get("/:workflowId", authMiddleware, async (req, res) => {
       include: {
         nodes: true,
         workflowExecutions: true,
-        connections : true,
+        connections: true,
         webhook: true,
       },
     });
@@ -305,7 +306,7 @@ workflowRouter.patch(
         });
       }
 
-      const workflow = await prisma.workflow.update({
+      await prisma.workflow.update({
         where: {
           id: workflowId,
           userId,
@@ -341,7 +342,7 @@ workflowRouter.patch(
 
 workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
   try {
-    const workflowId  = req.params.workflowId as string;
+    const workflowId = req.params.workflowId as string;
     const userId = req.userId;
 
     if (!userId) {
@@ -360,7 +361,13 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
       });
     }
 
-    const { title, enabled, nodes, connections, deletedNodeIds = [] } = validationResult.data;
+    const {
+      title,
+      enabled,
+      nodes,
+      connections,
+      deletedNodeIds = [],
+    } = validationResult.data;
 
     const existingWorkflow = await prisma.workflow.findFirst({
       where: {
@@ -380,15 +387,21 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
       });
     }
 
-    const nodeValidationErrors : any = [];
+    let validNodes = 0;
+    const nodeValidationErrors: string[] = [];
+    
     nodes.forEach((node, index) => {
-      const validation = NodeUnionSchema.safeParse(node);
-      if (!validation.success) {
+      const schema = node.id ? NodeUnionSchema : NewNodeSchema;
+      const validation = schema.safeParse(node);
+      
+      if (validation.success) {
+        validNodes += 1;
+      } else {
         nodeValidationErrors.push(`Node ${index}: ${validation.error.message}`);
       }
     });
 
-    if (nodeValidationErrors.length > 0) {
+    if (validNodes !== nodes.length) {
       return res.status(400).json({
         success: false,
         message: "Invalid nodes provided",
@@ -396,12 +409,22 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
       });
     }
 
+    const triggerNode = nodes.find((n) => n.type === "TRIGGER");
+    if (!triggerNode) {
+      return res.status(400).json({
+        success: false,
+        message: "Trigger Node Not found!",
+      });
+    }
+
     if (connections && connections.length > 0) {
-      const nodeIds = nodes.map(n => n.id || n.tempId);
-      const invalidConnections = connections.filter(conn => 
-        !nodeIds.includes(conn.sourceTempId) || !nodeIds.includes(conn.targetTempId)
+      const nodeIds = nodes.map((n) => n.id || n.tempId);
+      const invalidConnections = connections.filter(
+        (conn) =>
+          !nodeIds.includes(conn.sourceTempId) ||
+          !nodeIds.includes(conn.targetTempId)
       );
-      
+
       if (invalidConnections.length > 0) {
         return res.status(400).json({
           success: false,
@@ -425,27 +448,27 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
           where: {
             OR: [
               { sourceId: { in: deletedNodeIds } },
-              { targetId: { in: deletedNodeIds } }
-            ]
-          }
+              { targetId: { in: deletedNodeIds } },
+            ],
+          },
         });
 
         await tx.webhook.deleteMany({
           where: {
-            nodeId: { in: deletedNodeIds }
-          }
+            nodeId: { in: deletedNodeIds },
+          },
         });
 
         await tx.node.deleteMany({
-          where: { 
+          where: {
             id: { in: deletedNodeIds },
-            workflowId: workflowId 
-          }
+            workflowId: workflowId,
+          },
         });
       }
 
-      const nodeIdMapping = {};
-      
+      const nodeIdMapping: Record<string, string> = {};
+
       for (const nodeData of nodes) {
         if (nodeData.id) {
           const updatedNode = await tx.node.update({
@@ -456,9 +479,9 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
               actionPlatform: nodeData.actionPlatform || null,
               action: nodeData.action || {},
               data: nodeData.data || {},
-            }
+            },
           });
-          
+
           nodeIdMapping[nodeData.id] = updatedNode.id;
         } else if (nodeData.tempId) {
           const newNode = await tx.node.create({
@@ -470,36 +493,42 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
               action: nodeData.action || {},
               data: nodeData.data || {},
               workflowId: workflowId,
-            }
+            },
           });
 
-          if (nodeData.type === "TRIGGER" && nodeData.triggerType === "WEBHOOK") {
-            const path = createRandomPathForWebhook();
-            
+          if (
+            nodeData.type === "TRIGGER" &&
+            nodeData.triggerType === "WEBHOOK"
+          ) {
+            const { url, id } = createRandomPathForWebhook();
+
             await tx.webhook.create({
               data: {
-                path,
+                id,
+                path: url,
                 nodeId: newNode.id,
                 workflowId: workflowId,
               },
             });
           }
-          
+
           nodeIdMapping[nodeData.tempId] = newNode.id;
         }
       }
 
       await tx.connection.deleteMany({
-        where: { workflowId: workflowId }
+        where: { workflowId: workflowId },
       });
 
       if (connections && connections.length > 0) {
-        const connectionPromises = connections.map(conn => {
+        const connectionPromises = connections.map((conn) => {
           const sourceId = nodeIdMapping[conn.sourceTempId];
           const targetId = nodeIdMapping[conn.targetTempId];
 
           if (!sourceId || !targetId) {
-            throw new Error(`Invalid connection mapping: ${conn.sourceTempId} -> ${conn.targetTempId}`);
+            throw new Error(
+              `Invalid connection mapping: ${conn.sourceTempId} -> ${conn.targetTempId}`
+            );
           }
 
           return tx.connection.create({
@@ -522,7 +551,7 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
               webhook: true,
               outgoingConnections: true,
               incomingConnections: true,
-            }
+            },
           },
           connections: true,
           webhook: true,
@@ -535,10 +564,9 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
       message: "Workflow updated successfully",
       data: updatedWorkflow,
     });
-
-  } catch (error : any) {
+  } catch (error: any) {
     console.error("Error updating workflow:", error);
-    
+
     if (error.message.includes("Invalid connection mapping")) {
       return res.status(400).json({
         success: false,
@@ -547,7 +575,7 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
       });
     }
 
-    if (error.code === 'P2002') {
+    if (error.code === "P2002") {
       return res.status(400).json({
         success: false,
         message: "Duplicate constraint violation",
@@ -555,7 +583,7 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
       });
     }
 
-    if (error.code === 'P2025') {
+    if (error.code === "P2025") {
       return res.status(404).json({
         success: false,
         message: "Record not found",
@@ -566,7 +594,7 @@ workflowRouter.put("/:workflowId", authMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });
@@ -628,7 +656,8 @@ workflowRouter.post(
 
       if (!isWorkFlowExists.enabled) {
         res.status(403).json({
-          message: "This workflow is currently disabled. Please enable it to proceed."
+          message:
+            "This workflow is currently disabled. Please enable it to proceed.",
         });
         return;
       }
