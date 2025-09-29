@@ -161,9 +161,17 @@ async function executeNode(
   success: boolean;
   result: any;
 }> {
+  console.log(node);
+  
   switch (node.type) {
     case "TRIGGER":
-      return { success: true, result: "triggered" };
+      switch(node.triggerType) {
+        case "MANUAL":
+          return { success: true, result: "manually triggered" };
+        case "WEBHOOK":
+          return { success : true, result : "webhook triggered"};
+      };
+      break;
 
     case "ACTION": {
       switch (node.actionPlatform) {
